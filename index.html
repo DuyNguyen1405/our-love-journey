@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Our Love Journey ❤️</title>
     
-    <!-- Google Fonts cho Vibe lãng mạn -->
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
-    
-    <!-- Swiper CSS (Thư viện Slider ảnh) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
 
     <style>
@@ -19,11 +16,7 @@
             --text-color: #333333;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: 'Quicksand', sans-serif;
@@ -33,184 +26,72 @@
         }
 
         h1.title {
-            text-align: center;
-            font-family: 'Dancing Script', cursive;
-            font-size: 3.5rem;
-            color: var(--primary-color);
-            margin-bottom: 30px;
-            text-shadow: 2px 2px 4px rgba(255, 107, 129, 0.2);
+            text-align: center; font-family: 'Dancing Script', cursive;
+            font-size: 3.5rem; color: var(--primary-color);
+            margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(255, 107, 129, 0.2);
         }
 
-        /* Form Styling */
         .form-container {
-            max-width: 600px;
-            margin: 0 auto 40px auto;
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 10px 20px rgba(255, 107, 129, 0.1);
+            max-width: 600px; margin: 0 auto 40px auto;
+            background: var(--card-bg); padding: 25px;
+            border-radius: 15px; box-shadow: 0 10px 20px rgba(255, 107, 129, 0.1);
         }
 
         .form-container input, .form-container textarea {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border: 1px solid #ffd1d8;
-            border-radius: 8px;
-            font-family: inherit;
-            outline: none;
-            transition: border 0.3s;
+            width: 100%; padding: 12px; margin-bottom: 15px;
+            border: 1px solid #ffd1d8; border-radius: 8px;
+            font-family: inherit; outline: none; transition: border 0.3s;
         }
 
-        .form-container input:focus, .form-container textarea:focus {
-            border-color: var(--primary-color);
-        }
+        .form-container input:focus, .form-container textarea:focus { border-color: var(--primary-color); }
 
         .btn-submit {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 1.1rem;
-            font-weight: 600;
-            transition: transform 0.2s, background 0.3s;
+            background-color: var(--primary-color); color: white;
+            border: none; padding: 12px 20px; border-radius: 8px;
+            cursor: pointer; width: 100%; font-size: 1.1rem;
+            font-weight: 600; transition: transform 0.2s, background 0.3s;
         }
 
-        .btn-submit:hover {
-            background-color: #ff4760;
-            transform: translateY(-2px);
-        }
+        .btn-submit:hover { background-color: #ff4760; transform: translateY(-2px); }
 
-        /* Timeline Styling */
-        .timeline {
-            max-width: 800px;
-            margin: 0 auto;
-            position: relative;
-            padding-left: 30px;
-        }
-
+        .timeline { max-width: 800px; margin: 0 auto; position: relative; padding-left: 30px; }
         .timeline::before {
-            content: '';
-            position: absolute;
-            left: 10px;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: #ffc4cf;
-            border-radius: 2px;
+            content: ''; position: absolute; left: 10px; top: 0; bottom: 0;
+            width: 4px; background: #ffc4cf; border-radius: 2px;
         }
 
         .timeline-item {
-            position: relative;
-            margin-bottom: 30px;
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            position: relative; margin-bottom: 30px; background: var(--card-bg);
+            padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
             transition: transform 0.3s;
         }
-
-        .timeline-item:hover {
-            transform: translateY(-5px);
-        }
+        .timeline-item:hover { transform: translateY(-5px); }
 
         .timeline-item::before {
-            content: '❤️';
-            position: absolute;
-            left: -33px;
-            top: 20px;
-            background: var(--bg-color);
-            border-radius: 50%;
-            font-size: 1.2rem;
+            content: '❤️'; position: absolute; left: -33px; top: 20px;
+            background: var(--bg-color); border-radius: 50%; font-size: 1.2rem;
         }
 
-        .timeline-date {
-            color: var(--primary-color);
-            font-weight: 600;
-            font-size: 0.9rem;
-            margin-bottom: 5px;
-        }
-
+        .timeline-date { color: var(--primary-color); font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; }
         .timeline-title {
-            font-size: 1.5rem;
-            margin-bottom: 10px;
-            cursor: pointer;
-            color: var(--primary-color);
-            text-decoration: underline;
-            text-decoration-color: transparent;
+            font-size: 1.5rem; margin-bottom: 10px; cursor: pointer;
+            color: var(--primary-color); text-decoration: underline; text-decoration-color: transparent;
             transition: text-decoration-color 0.3s;
         }
+        .timeline-title:hover { text-decoration-color: var(--primary-color); }
+        .timeline-content { line-height: 1.6; }
 
-        .timeline-title:hover {
-            text-decoration-color: var(--primary-color);
-        }
-
-        .timeline-content {
-            line-height: 1.6;
-        }
-
-        /* Modal & Swiper Styling */
         .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;
         }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            width: 90%;
-            max-width: 800px;
-            background: #fff;
-            padding: 10px;
-            border-radius: 10px;
-            position: relative;
-        }
-
-        .close-btn {
-            position: absolute;
-            top: -40px;
-            right: 0;
-            color: white;
-            font-size: 2rem;
-            cursor: pointer;
-        }
-
-        .swiper {
-            width: 100%;
-            height: 400px;
-            border-radius: 8px;
-        }
-
-        .swiper-slide {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .swiper-slide img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            border-radius: 8px;
-        }
-
-        .helper-text {
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: -10px;
-            margin-bottom: 15px;
-            display: block;
-        }
+        .modal.active { display: flex; }
+        .modal-content { width: 90%; max-width: 800px; background: #fff; padding: 10px; border-radius: 10px; position: relative; }
+        .close-btn { position: absolute; top: -40px; right: 0; color: white; font-size: 2rem; cursor: pointer; }
+        .swiper { width: 100%; height: 400px; border-radius: 8px; }
+        .swiper-slide { display: flex; justify-content: center; align-items: center; }
+        .swiper-slide img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+        .helper-text { font-size: 0.8rem; color: #888; margin-top: -10px; margin-bottom: 15px; display: block; }
     </style>
 </head>
 <body>
@@ -223,7 +104,7 @@
             <input type="date" id="dateInput" required>
             <input type="text" id="titleInput" placeholder="Tên sự kiện (VD: Lần đầu hẹn hò...)" required>
             <textarea id="contentInput" rows="3" placeholder="Ghi chú lại những kỷ niệm ngọt ngào..." required></textarea>
-            <input type="text" id="imagesInput" placeholder="Link ảnh">
+            <input type="text" id="imagesInput" placeholder="Link ảnh (Tùy chọn)">
             <span class="helper-text">Nếu có nhiều ảnh, hãy ngăn cách các link bằng dấu phẩy (,).</span>
             <button type="submit" class="btn-submit">Lưu Kỷ Niệm 💌</button>
         </form>
@@ -231,7 +112,7 @@
 
     <!-- Nơi hiển thị Timeline -->
     <div class="timeline" id="timeline">
-        <!-- Các sự kiện sẽ được render bằng Javascript vào đây -->
+        <p style="text-align:center; color:#888;">Đang tải kỷ niệm của chúng mình...</p>
     </div>
 
     <!-- Modal Slider Ảnh -->
@@ -239,9 +120,7 @@
         <div class="modal-content">
             <span class="close-btn" id="closeModal">×</span>
             <div class="swiper mySwiper">
-                <div class="swiper-wrapper" id="swiperWrapper">
-                    <!-- Ảnh sẽ được render vào đây -->
-                </div>
+                <div class="swiper-wrapper" id="swiperWrapper"></div>
                 <div class="swiper-button-next"></div>
                 <div class="swiper-button-prev"></div>
                 <div class="swiper-pagination"></div>
@@ -249,80 +128,118 @@
         </div>
     </div>
 
-    <!-- Swiper JS -->
-    <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
 
-    <script>
-        // Mảng lưu trữ sự kiện, lấy từ LocalStorage
-        let events = JSON.parse(localStorage.getItem('loveTimelineEvents')) || [];
+    <!-- Sử dụng type="module" để import Firebase -->
+    <script type="module">
+        // 1. Import các hàm cần thiết từ Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        // =========================================================
+        // 2. THAY THẾ ĐOẠN NÀY BẰNG FIREBASE CONFIG CỦA BẠN
+        // =========================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBxkDY6uEMMwZy8r29wyixjNbBBka5mQk0",
+            authDomain: "our-love-journey-c2da0.firebaseapp.com",
+            databaseURL: "https://our-love-journey-c2da0-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "our-love-journey-c2da0",
+            storageBucket: "our-love-journey-c2da0.firebasestorage.app",
+            messagingSenderId: "428563386307",
+            appId: "1:428563386307:web:b2c4daacc93aaf19b1f776"
+        };
+
+        // 3. Khởi tạo Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const eventsRef = ref(db, 'loveEvents'); // Tạo bảng tên là 'loveEvents'
+
+        // Khai báo biến toàn cục
+        window.loveEventsList = [];
         let swiperInstance = null;
-
-        const eventForm = document.getElementById('eventForm');
+        
         const timeline = document.getElementById('timeline');
-        const sliderModal = document.getElementById('sliderModal');
-        const closeModal = document.getElementById('closeModal');
-        const swiperWrapper = document.getElementById('swiperWrapper');
+        const eventForm = document.getElementById('eventForm');
 
-        // Hàm render các sự kiện ra màn hình
-        function renderTimeline() {
-            timeline.innerHTML = '';
-            
-            // Sắp xếp sự kiện theo ngày tháng giảm dần (hoặc tăng dần tùy bạn)
-            events.sort((a, b) => new Date(b.date) - new Date(a.date));
+        // 4. Lắng nghe dữ liệu Realtime từ Firebase
+        onValue(eventsRef, (snapshot) => {
+            const data = snapshot.val();
+            timeline.innerHTML = ''; // Xóa dữ liệu cũ trên màn hình
 
-            events.forEach((ev, index) => {
-                const item = document.createElement('div');
-                item.className = 'timeline-item';
+            if (data) {
+                // Chuyển object của Firebase thành array để dễ sắp xếp
+                window.loveEventsList = Object.values(data);
                 
-                // Định dạng ngày
-                const dateObj = new Date(ev.date);
-                const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                // Sắp xếp giảm dần theo ngày
+                window.loveEventsList.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-                item.innerHTML = `
-                    <div class="timeline-date">${dateStr}</div>
-                    <div class="timeline-title" onclick="openSlider(${index})">${ev.title} 📸</div>
-                    <div class="timeline-content">${ev.content}</div>
-                `;
-                timeline.appendChild(item);
-            });
-        }
+                window.loveEventsList.forEach((ev, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'timeline-item';
+                    
+                    const dateObj = new Date(ev.date);
+                    const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    
+                    // Thêm icon camera nếu có ảnh
+                    const photoIcon = (ev.images && ev.images.length > 0) ? '📸' : '';
 
-        // Xử lý khi submit form
-        eventForm.addEventListener('submit', function(e) {
+                    item.innerHTML = `
+                        <div class="timeline-date">${dateStr}</div>
+                        <div class="timeline-title" onclick="openSlider(${index})">${ev.title} ${photoIcon}</div>
+                        <div class="timeline-content">${ev.content}</div>
+                    `;
+                    timeline.appendChild(item);
+                });
+            } else {
+                timeline.innerHTML = '<p style="text-align:center; color:#888;">Chưa có kỷ niệm nào. Hãy tạo kỷ niệm đầu tiên nhé!</p>';
+            }
+        });
+
+        // 5. Gửi dữ liệu mới lên Firebase
+        eventForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            const btn = eventForm.querySelector('.btn-submit');
+            btn.innerText = 'Đang lưu...'; // Hiệu ứng chờ
+
             const date = document.getElementById('dateInput').value;
             const title = document.getElementById('titleInput').value;
             const content = document.getElementById('contentInput').value;
             const imagesStr = document.getElementById('imagesInput').value;
             
-            // Tách link ảnh bằng dấu phẩy và làm sạch khoảng trắng
-            const images = imagesStr.split(',').map(img => img.trim()).filter(img => img !== '');
+            let images = [];
+            if(imagesStr.trim() !== '') {
+                images = imagesStr.split(',').map(img => img.trim()).filter(img => img !== '');
+            }
 
             const newEvent = { date, title, content, images };
-            events.push(newEvent);
-            
-            // Lưu vào LocalStorage
-            localStorage.setItem('loveTimelineEvents', JSON.stringify(events));
-            
-            // Reset form và render lại
-            eventForm.reset();
-            renderTimeline();
+
+            try {
+                // Đẩy dữ liệu lên database
+                await push(eventsRef, newEvent);
+                eventForm.reset();
+            } catch (error) {
+                alert("Lỗi khi lưu: " + error.message);
+            } finally {
+                btn.innerText = 'Lưu Kỷ Niệm 💌';
+            }
         });
 
-        // Hàm mở Modal và Slider Ảnh
+        // ==========================================
+        // JS XỬ LÝ GIAO DIỆN SLIDER VÀ MODAL
+        // ==========================================
+        const sliderModal = document.getElementById('sliderModal');
+        const closeModal = document.getElementById('closeModal');
+        const swiperWrapper = document.getElementById('swiperWrapper');
+
         window.openSlider = function(index) {
-            const event = events[index];
+            const event = window.loveEventsList[index];
             if (!event.images || event.images.length === 0) {
                 alert("Sự kiện này chưa có ảnh nào! 🥺");
                 return;
             }
 
-            // Xóa ảnh cũ trong slider
             swiperWrapper.innerHTML = '';
-            
-            // Thêm ảnh mới
             event.images.forEach(imgUrl => {
                 const slide = document.createElement('div');
                 slide.className = 'swiper-slide';
@@ -330,40 +247,22 @@
                 swiperWrapper.appendChild(slide);
             });
 
-            // Hiển thị modal
             sliderModal.classList.add('active');
 
-            // Khởi tạo Swiper
             if (swiperInstance) {
                 swiperInstance.destroy(true, true);
             }
             swiperInstance = new Swiper(".mySwiper", {
-                navigation: {
-                    nextEl: ".swiper-button-next",
-                    prevEl: ".swiper-button-prev",
-                },
-                pagination: {
-                    el: ".swiper-pagination",
-                    clickable: true,
-                },
-                loop: event.images.length > 1 // Chỉ loop nếu có nhiều hơn 1 ảnh
+                navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
+                pagination: { el: ".swiper-pagination", clickable: true },
+                loop: event.images.length > 1
             });
         }
 
-        // Đóng Modal
-        closeModal.addEventListener('click', () => {
-            sliderModal.classList.remove('active');
-        });
-
-        // Đóng khi click ra ngoài modal content
+        closeModal.addEventListener('click', () => sliderModal.classList.remove('active'));
         sliderModal.addEventListener('click', (e) => {
-            if (e.target === sliderModal) {
-                sliderModal.classList.remove('active');
-            }
+            if (e.target === sliderModal) sliderModal.classList.remove('active');
         });
-
-        // Render timeline lần đầu khi load trang
-        renderTimeline();
     </script>
 </body>
 </html>
