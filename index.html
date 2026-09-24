@@ -62,8 +62,8 @@
 
         .timeline-item {
             position: relative; margin-bottom: 30px; background: var(--card-bg);
-            padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            transition: transform 0.3s;
+            padding: 20px; padding-bottom: 40px; border-radius: 15px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: transform 0.3s;
         }
         .timeline-item:hover { transform: translateY(-5px); }
 
@@ -80,6 +80,26 @@
         }
         .timeline-title:hover { text-decoration-color: var(--primary-color); }
         .timeline-content { line-height: 1.6; }
+
+        /* Nút Xóa ở góc dưới bên phải khung sự kiện */
+        .btn-delete {
+            position: absolute;
+            bottom: 12px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            color: #aaa;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .btn-delete:hover {
+            color: #ff4d4d;
+        }
 
         .modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -118,7 +138,7 @@
     <!-- Modal Slider Ảnh -->
     <div class="modal" id="sliderModal">
         <div class="modal-content">
-            <span class="close-btn" id="closeModal">×</span>
+            <span class="close-btn" id="closeModal">&times;</span>
             <div class="swiper mySwiper">
                 <div class="swiper-wrapper" id="swiperWrapper"></div>
                 <div class="swiper-button-next"></div>
@@ -132,43 +152,43 @@
 
     <!-- Sử dụng type="module" để import Firebase -->
     <script type="module">
-        // 1. Import các hàm cần thiết từ Firebase SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
         // =========================================================
-        // 2. THAY THẾ ĐOẠN NÀY BẰNG FIREBASE CONFIG CỦA BẠN
+        // THAY THẾ ĐOẠN NÀY BẰNG FIREBASE CONFIG CỦA BẠN
         // =========================================================
         const firebaseConfig = {
-          apiKey: "AIzaSyBxkDY6uEMMwZy8r29wyixjNbBBka5mQk0",
-          authDomain: "our-love-journey-c2da0.firebaseapp.com",
-          databaseURL: "https://our-love-journey-c2da0-default-rtdb.asia-southeast1.firebasedatabase.app",
-          projectId: "our-love-journey-c2da0",
-          storageBucket: "our-love-journey-c2da0.firebasestorage.app",
-          messagingSenderId: "428563386307",
-          appId: "1:428563386307:web:b2c4daacc93aaf19b1f776"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
-        // 3. Khởi tạo Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const eventsRef = ref(db, 'loveEvents'); // Tạo bảng tên là 'loveEvents'
+        const eventsRef = ref(db, 'loveEvents');
 
-        // Khai báo biến toàn cục
         window.loveEventsList = [];
         let swiperInstance = null;
         
         const timeline = document.getElementById('timeline');
         const eventForm = document.getElementById('eventForm');
 
-        // 4. Lắng nghe dữ liệu Realtime từ Firebase
+        // Lắng nghe dữ liệu Realtime từ Firebase
         onValue(eventsRef, (snapshot) => {
             const data = snapshot.val();
-            timeline.innerHTML = ''; // Xóa dữ liệu cũ trên màn hình
+            timeline.innerHTML = '';
 
             if (data) {
-                // Chuyển object của Firebase thành array để dễ sắp xếp
-                window.loveEventsList = Object.values(data);
+                // Chuyển object dữ liệu kèm theo KeyID của Firebase
+                window.loveEventsList = Object.entries(data).map(([key, value]) => ({
+                    key,
+                    ...value
+                }));
                 
                 // Sắp xếp giảm dần theo ngày
                 window.loveEventsList.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -180,13 +200,13 @@
                     const dateObj = new Date(ev.date);
                     const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     
-                    // Thêm icon camera nếu có ảnh
                     const photoIcon = (ev.images && ev.images.length > 0) ? '📸' : '';
 
                     item.innerHTML = `
                         <div class="timeline-date">${dateStr}</div>
                         <div class="timeline-title" onclick="openSlider(${index})">${ev.title} ${photoIcon}</div>
                         <div class="timeline-content">${ev.content}</div>
+                        <button class="btn-delete" onclick="deleteEvent('${ev.key}')" title="Xóa kỷ niệm này">🗑️ Xóa</button>
                     `;
                     timeline.appendChild(item);
                 });
@@ -195,12 +215,24 @@
             }
         });
 
-        // 5. Gửi dữ liệu mới lên Firebase
+        // Hàm xóa sự kiện khỏi Firebase
+        window.deleteEvent = async function(key) {
+            if (confirm("Bạn có chắc chắn muốn xóa kỷ niệm này không? 🥺")) {
+                try {
+                    const itemRef = ref(db, `loveEvents/${key}`);
+                    await remove(itemRef);
+                } catch (error) {
+                    alert("Lỗi khi xóa: " + error.message);
+                }
+            }
+        };
+
+        // Gửi dữ liệu mới lên Firebase
         eventForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const btn = eventForm.querySelector('.btn-submit');
-            btn.innerText = 'Đang lưu...'; // Hiệu ứng chờ
+            btn.innerText = 'Đang lưu...';
 
             const date = document.getElementById('dateInput').value;
             const title = document.getElementById('titleInput').value;
@@ -215,7 +247,6 @@
             const newEvent = { date, title, content, images };
 
             try {
-                // Đẩy dữ liệu lên database
                 await push(eventsRef, newEvent);
                 eventForm.reset();
             } catch (error) {
@@ -225,9 +256,7 @@
             }
         });
 
-        // ==========================================
-        // JS XỬ LÝ GIAO DIỆN SLIDER VÀ MODAL
-        // ==========================================
+        // Modal Slider Ảnh
         const sliderModal = document.getElementById('sliderModal');
         const closeModal = document.getElementById('closeModal');
         const swiperWrapper = document.getElementById('swiperWrapper');
