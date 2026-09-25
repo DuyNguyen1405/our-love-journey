@@ -1,6 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
+// ==========================================
+// CẤU HÌNH FIREBASE TRỰC TIẾP TẠI ĐÂY
+// ==========================================
 const firebaseConfig = {
     apiKey: "AIzaSyBxkDY6uEMMwZy8r29wyixjNbBBka5mQk0",
     authDomain: "our-love-journey-c2da0.firebaseapp.com",
@@ -13,18 +16,64 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const eventsRef = ref(db, 'loveEvents');
+const eventsRef = ref(db, 'loveEvents_BiMat123'); // Tên bảng dữ liệu
 
 window.loveEventsList = [];
 let swiperInstance = null;
 let editingKey = null;
+let currentUser = ''; // 'Duy' hoặc 'Chi'
 
+// Biến giao diện
 const timeline = document.getElementById('timeline');
 const eventForm = document.getElementById('eventForm');
 const contentInput = document.getElementById('contentInput');
 const formHeading = document.getElementById('formHeading');
 const submitBtn = document.getElementById('submitBtn');
 const formModal = document.getElementById('formModal');
+const feelingInput = document.getElementById('feelingInput');
+const userGreeting = document.getElementById('userGreeting');
+
+// ==========================================
+// LOGIC KIỂM TRA MẬT KHẨU (ĐÃ SỬA LỖI)
+// ==========================================
+const passcodeInput = document.getElementById('passcodeInput');
+const errorMessage = document.getElementById('errorMessage');
+const loginScreen = document.getElementById('loginScreen');
+const mainContent = document.getElementById('mainContent');
+
+if (passcodeInput && errorMessage && loginScreen && mainContent) {
+    passcodeInput.addEventListener('keyup', (e) => {
+        let val = e.target.value;
+        val = val.replace(/[^0-9]/g, '');
+        e.target.value = val; 
+
+        if (errorMessage.classList.contains('active')) {
+            errorMessage.classList.remove('active');
+        }
+
+        if (val.length === 4) {
+            if (val === '1405' || val === '1704') {
+                currentUser = (val === '1405') ? 'Duy' : 'Chi';
+                
+                if(userGreeting) {
+                    userGreeting.innerText = `Chào ${currentUser} ❤️`;
+                }
+
+                passcodeInput.disabled = true;
+
+                loginScreen.style.opacity = '0';
+                
+                setTimeout(() => {
+                    loginScreen.style.display = 'none';
+                    mainContent.style.display = 'block';
+                }, 800);
+            } else {
+                errorMessage.classList.add('active');
+                passcodeInput.value = '';
+            }
+        }
+    });
+}
 
 // Thao tác định dạng văn bản
 window.formatDoc = function(cmd, value = null) {
@@ -32,11 +81,12 @@ window.formatDoc = function(cmd, value = null) {
     contentInput.focus();
 };
 
-// Bật / Tắt Menu Form Đăng Ký
+// Bật Menu Form Đăng Ký
 document.getElementById('openFormBtn').addEventListener('click', () => {
     editingKey = null;
     eventForm.reset();
     contentInput.innerHTML = '';
+    feelingInput.value = '';
     formHeading.innerText = 'Thêm kỷ niệm mới 💌';
     submitBtn.innerText = 'Lưu Kỷ Niệm 💌';
     formModal.classList.add('active');
@@ -44,10 +94,6 @@ document.getElementById('openFormBtn').addEventListener('click', () => {
 
 document.getElementById('closeFormBtn').addEventListener('click', () => {
     formModal.classList.remove('active');
-});
-
-formModal.addEventListener('click', (e) => {
-    if (e.target === formModal) formModal.classList.remove('active');
 });
 
 // Lắng nghe dữ liệu Realtime
@@ -61,7 +107,6 @@ onValue(eventsRef, (snapshot) => {
             ...value
         }));
         
-        // Sắp xếp theo ngày tháng TĂNG DẦN (Cũ nhất ở trên cùng)
         window.loveEventsList.sort((a, b) => new Date(a.date) - new Date(b.date));
 
         window.loveEventsList.forEach((ev, index) => {
@@ -71,27 +116,37 @@ onValue(eventsRef, (snapshot) => {
             const dateObj = new Date(ev.date);
             const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
             
-            // Xử lý render danh sách ảnh thu nhỏ (Thumbnails)
             let galleryHTML = '';
             let photoIcon = '';
             if (ev.images && ev.images.length > 0) {
                 photoIcon = '📸';
                 galleryHTML = '<div class="timeline-gallery">';
                 ev.images.forEach((imgUrl, imgIndex) => {
-                    // Khi bấm vào ảnh nhỏ, truyền luôn vị trí của ảnh (imgIndex) vào hàm openSlider
-                    galleryHTML += `<img src="${imgUrl}" alt="Thumbnail" onclick="openSlider(${index}, ${imgIndex})" onerror="this.style.display='none'" title="Bấm để xem ảnh to">`;
+                    galleryHTML += `<img src="${imgUrl}" alt="Thumbnail" onclick="openSlider(${index}, ${imgIndex})" onerror="this.style.display='none'">`;
                 });
                 galleryHTML += '</div>';
             }
 
-            // Gắn giao diện vào item
+            let feelingsHTML = '';
+            if ((ev.feelingChi && ev.feelingChi.trim() !== '') || (ev.feelingDuy && ev.feelingDuy.trim() !== '')) {
+                feelingsHTML += '<div class="feelings-container">';
+                if (ev.feelingChi && ev.feelingChi.trim() !== '') {
+                    feelingsHTML += `<div class="feeling-box feeling-chi"><span class="feeling-author">👩 Chi:</span>${ev.feelingChi}</div>`;
+                }
+                if (ev.feelingDuy && ev.feelingDuy.trim() !== '') {
+                    feelingsHTML += `<div class="feeling-box feeling-duy"><span class="feeling-author">👦 Duy:</span>${ev.feelingDuy}</div>`;
+                }
+                feelingsHTML += '</div>';
+            }
+
             item.innerHTML = `
                 <div class="timeline-date">${dateStr}</div>
                 <div class="timeline-title" onclick="openSlider(${index}, 0)">${ev.title} ${photoIcon}</div>
                 <div class="timeline-content">${ev.content}</div>
-                ${galleryHTML} <!-- Thêm lưới ảnh thu nhỏ vào dưới nội dung -->
+                ${galleryHTML}
+                ${feelingsHTML}
                 <div class="timeline-actions">
-                    <button class="btn-action btn-edit" onclick="editEvent('${ev.key}')" title="Sửa kỷ niệm">✏️ Sửa</button>
+                    <button class="btn-action btn-edit" onclick="editEvent('${ev.key}')" title="Sửa hoặc thêm cảm nghĩ">✏️ Sửa</button>
                     <button class="btn-action btn-delete" onclick="deleteEvent('${ev.key}')" title="Xóa kỷ niệm">🗑️ Xóa</button>
                 </div>
             `;
@@ -114,16 +169,22 @@ window.editEvent = function(key) {
     contentInput.innerHTML = ev.content || '';
     document.getElementById('imagesInput').value = (ev.images && ev.images.length > 0) ? ev.images.join(', ') : '';
 
-    formHeading.innerText = 'Chỉnh sửa kỷ niệm ✏️';
+    if (currentUser === 'Duy') {
+        feelingInput.value = ev.feelingDuy || '';
+    } else {
+        feelingInput.value = ev.feelingChi || '';
+    }
+
+    formHeading.innerText = 'Cập nhật kỷ niệm ✏️';
     submitBtn.innerText = 'Cập Nhật Kỷ Niệm 💾';
-    formModal.classList.add('active'); // Bật Menu lên
+    formModal.classList.add('active');
 };
 
 // Xóa kỷ niệm
 window.deleteEvent = async function(key) {
     if (confirm("Bạn có chắc chắn muốn xóa kỷ niệm này không? 🥺")) {
         try {
-            const itemRef = ref(db, `loveEvents/${key}`);
+            const itemRef = ref(db, `loveEvents_BiMat123/${key}`);
             await remove(itemRef);
             if (editingKey === key) formModal.classList.remove('active');
         } catch (error) {
@@ -148,6 +209,7 @@ eventForm.addEventListener('submit', async (e) => {
     const title = document.getElementById('titleInput').value;
     const content = contentHTML;
     const imagesStr = document.getElementById('imagesInput').value;
+    const myFeeling = feelingInput.value.trim();
     
     let images = [];
     if(imagesStr.trim() !== '') {
@@ -156,14 +218,20 @@ eventForm.addEventListener('submit', async (e) => {
 
     const eventData = { date, title, content, images };
 
+    if (currentUser === 'Duy') {
+        eventData.feelingDuy = myFeeling;
+    } else if (currentUser === 'Chi') {
+        eventData.feelingChi = myFeeling;
+    }
+
     try {
         if (editingKey) {
-            const itemRef = ref(db, `loveEvents/${editingKey}`);
+            const itemRef = ref(db, `loveEvents_BiMat123/${editingKey}`);
             await update(itemRef, eventData);
         } else {
             await push(eventsRef, eventData);
         }
-        formModal.classList.remove('active'); // Đóng form sau khi lưu thành công
+        formModal.classList.remove('active');
     } catch (error) {
         alert("Lỗi: " + error.message);
     } finally {
@@ -171,18 +239,14 @@ eventForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Modal Slider Ảnh (Đã nâng cấp tham số nhận vào)
+// Modal Slider Ảnh 
 const sliderModal = document.getElementById('sliderModal');
 const closeSliderBtn = document.getElementById('closeSliderBtn');
 const swiperWrapper = document.getElementById('swiperWrapper');
 
-// Hàm openSlider giờ đây nhận thêm tham số initialSlideIndex
 window.openSlider = function(eventIndex, initialSlideIndex = 0) {
     const event = window.loveEventsList[eventIndex];
-    if (!event.images || event.images.length === 0) {
-        alert("Sự kiện này chưa có ảnh nào! 🥺");
-        return;
-    }
+    if (!event.images || event.images.length === 0) return;
 
     swiperWrapper.innerHTML = '';
     event.images.forEach(imgUrl => {
@@ -198,9 +262,8 @@ window.openSlider = function(eventIndex, initialSlideIndex = 0) {
         swiperInstance.destroy(true, true);
     }
     
-    // Khởi tạo lại Swiper và cấu hình ảnh bắt đầu (initialSlide)
     swiperInstance = new Swiper(".mySwiper", {
-        initialSlide: initialSlideIndex, // Hiển thị ảnh đúng với ảnh vừa bấm vào
+        initialSlide: initialSlideIndex,
         navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
         pagination: { el: ".swiper-pagination", clickable: true },
         loop: event.images.length > 1
@@ -210,41 +273,4 @@ window.openSlider = function(eventIndex, initialSlideIndex = 0) {
 closeSliderBtn.addEventListener('click', () => sliderModal.classList.remove('active'));
 sliderModal.addEventListener('click', (e) => {
     if (e.target === sliderModal) sliderModal.classList.remove('active');
-});
-
-// ==========================================
-// LOGIC KIỂM TRA MẬT KHẨU (SINH NHẬT)
-// ==========================================
-const passcodeInput = document.getElementById('passcodeInput');
-const errorMessage = document.getElementById('errorMessage');
-const loginScreen = document.getElementById('loginScreen');
-const mainContent = document.getElementById('mainContent');
-
-passcodeInput.addEventListener('input', (e) => {
-    // Chỉ cho phép nhập số
-    e.target.value = e.target.value.replace(/[^0-9]/g, '');
-    const val = e.target.value;
-
-    // Ẩn lỗi khi người dùng bắt đầu nhập lại
-    if(errorMessage.classList.contains('active')) {
-        errorMessage.classList.remove('active');
-    }
-
-    // Tự động kiểm tra ngay khi nhập đủ 4 số
-    if (val.length === 4) {
-        if (val === '1405' || val === '1704') {
-            // Đúng mật khẩu -> Làm mờ màn hình đăng nhập
-            loginScreen.style.opacity = '0';
-            
-            // Đợi 0.8s cho hiệu ứng mờ kết thúc rồi mới hiển thị nội dung chính
-            setTimeout(() => {
-                loginScreen.style.display = 'none';
-                mainContent.style.display = 'block';
-            }, 800);
-        } else {
-            // Sai mật khẩu -> Báo lỗi màu đỏ và xóa trắng ô nhập
-            errorMessage.classList.add('active');
-            passcodeInput.value = '';
-        }
-    }
 });

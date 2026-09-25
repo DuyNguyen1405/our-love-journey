@@ -307,3 +307,58 @@ body {
 .error-msg.active {
     opacity: 1; /* Hiện chữ khi nhập sai */
 }
+
+/* ========================================= */
+/* CSS CHO KHUNG CẢM NGHĨ (FEELINGS)         */
+/* ========================================= */
+.feelings-container {
+    margin-top: 20px;
+    border-top: 2px dashed #ffeef2;
+    padding-top: 15px;
+}
+
+.feeling-box {
+    padding: 12px 15px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+
+/* Kiểu dáng riêng cho Chi */
+.feeling-chi {
+    background: #fff0f3;
+    border-left: 4px solid #ff99ac;
+}
+.feeling-chi .feeling-author { color: #d6336c; }
+
+/* Kiểu dáng riêng cho Duy */
+.feeling-duy {
+    background: #f0f8ff;
+    border-left: 4px solid #99ccff;
+}
+.feeling-duy .feeling-author { color: #1c7ed6; }
+
+.feeling-author {
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+    font-size: 0.9rem;
+}
+
+/* Ô nhập cảm nghĩ trong Form */
+#feelingInput {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ffd1d8;
+    border-radius: 8px;
+    font-family: inherit;
+    outline: none;
+    transition: border 0.3s;
+    resize: vertical;
+}
+#feelingInput:focus {
+    border-color: var(--primary-color);
+}

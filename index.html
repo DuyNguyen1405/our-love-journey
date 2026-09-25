@@ -5,18 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Our Love Journey ❤️</title>
     
-    <!-- Fonts & Thư viện Swiper -->
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
-    
-    <!-- Liên kết file CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- ========================================== -->
-    <!-- MÀN HÌNH KHÓA (BẢO MẬT BẰNG SINH NHẬT) -->
-    <!-- ========================================== -->
+    <!-- MÀN HÌNH KHÓA -->
     <div id="loginScreen" class="login-screen">
         <div class="login-box">
             <h2>Bảo mật tình yêu 🔒</h2>
@@ -26,20 +21,21 @@
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- NỘI DUNG CHÍNH CỦA TRANG WEB (ẨN MẶC ĐỊNH) -->
-    <!-- ========================================== -->
+    <!-- NỘI DUNG CHÍNH -->
     <div id="mainContent" style="display: none;">
         
-        <!-- Thanh Điều Hướng (Menu) -->
+        <!-- Thanh Điều Hướng -->
         <div class="top-nav">
-            <h1>Love Journey ❤️</h1>
+            <div>
+                <h1>Love Journey ❤️</h1>
+                <!-- Lời chào người dùng -->
+                <p id="userGreeting" style="color: var(--primary-color); font-weight: 600; margin-top: 5px;"></p>
+            </div>
             <button class="btn-add" id="openFormBtn">➕ Thêm kỷ niệm</button>
         </div>
 
-        <!-- Khung đăng ký / sửa sự kiện (Modal) -->
+        <!-- Khung đăng ký / sửa sự kiện -->
         <div class="form-modal" id="formModal">
-            <!-- (Giữ nguyên toàn bộ form bên trong như cũ) -->
             <div class="form-container">
                 <span class="close-form-btn" id="closeFormBtn">&times;</span>
                 <h2 class="form-heading" id="formHeading">Thêm kỷ niệm mới 💌</h2>
@@ -64,11 +60,18 @@
                                 <input type="color" value="#ffeef2" onchange="formatDoc('hiliteColor', this.value)">
                             </div>
                         </div>
-                        <div id="contentInput" class="rich-editor" contenteditable="true" data-placeholder="Ghi chú lại những kỷ niệm ngọt ngào..."></div>
+                        <div id="contentInput" class="rich-editor" contenteditable="true" data-placeholder="Ghi chú chung cho kỷ niệm..."></div>
                     </div>
 
+                    <!-- Khung nhập Link ảnh -->
                     <input type="text" id="imagesInput" placeholder="Link ảnh (Tùy chọn)">
                     <span class="helper-text">Nếu có nhiều ảnh, hãy ngăn cách bằng dấu phẩy (,).</span>
+
+                    <!-- Ô NHẬP CẢM NGHĨ CÁ NHÂN -->
+                    <div style="margin-bottom: 20px; margin-top: 10px;">
+                        <label for="feelingInput" style="font-weight: 600; color: var(--primary-color); display: block; margin-bottom: 5px;">Cảm nghĩ của riêng bạn 💭</label>
+                        <textarea id="feelingInput" rows="3" placeholder="Bạn cảm thấy thế nào về sự kiện này? (Chỉ mình bạn sửa được phần này)"></textarea>
+                    </div>
                     
                     <button type="submit" class="btn-submit" id="submitBtn">Lưu Kỷ Niệm 💌</button>
                 </form>
@@ -93,14 +96,12 @@
             </div>
         </div>
 
-    </div> <!-- Kết thúc div mainContent -->
+    </div>
 
     <!-- Thư viện Javascript Swiper -->
     <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
-    <!-- Cấu hình Firebase (Lớp bảo vệ 2) -->
-    <script src="firebase-config.js"></script>
-    <!-- Javascript chính -->
+    
+    <!-- KHÔNG CÒN GỌI firebase-config.js NỮA, GỌI TRỰC TIẾP script.js -->
     <script type="module" src="script.js"></script>
-
 </body>
 </html>
