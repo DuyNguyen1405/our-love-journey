@@ -171,6 +171,32 @@ body {
     background: var(--bg-color); border-radius: 50%; font-size: 1.2rem;
 }
 
+/* ========================================= */
+/* CSS CHO VIỀN TRẠNG THÁI (ĐỦ/THIẾU CẢM NGHĨ) */
+/* ========================================= */
+.timeline-item {
+    /* (Giữ nguyên các thuộc tính cũ của timeline-item) */
+    position: relative; margin-bottom: 30px; background: var(--card-bg);
+    padding: 20px; padding-bottom: 45px; border-radius: 15px; 
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: transform 0.3s;
+    /* TĂNG ĐỘ DÀY VIỀN LÊN 3px (Thay vì 2px) */
+    border: 3px solid transparent; 
+}
+
+.timeline-item.complete-feelings {
+    /* Đổi sang màu Xanh Dương Đậm (DodgerBlue) */
+    border-color: #1e90ff; 
+    /* Tăng độ đậm bóng đổ (Shadow) */
+    box-shadow: 0 5px 15px rgba(30, 144, 255, 0.4);
+}
+
+.timeline-item.incomplete-feelings {
+    /* Đổi sang màu Đỏ Đậm (Crimson) */
+    border-color: #dc143c; 
+    /* Tăng độ đậm bóng đổ (Shadow) */
+    box-shadow: 0 5px 15px rgba(220, 20, 60, 0.4);
+}
+
 .timeline-date { color: var(--primary-color); font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; }
 .timeline-title {
     font-size: 1.5rem; margin-bottom: 10px; cursor: pointer;

@@ -42,6 +42,9 @@ const loginScreen = document.getElementById('loginScreen');
 const mainContent = document.getElementById('mainContent');
 
 if (passcodeInput && errorMessage && loginScreen && mainContent) {
+    // THÊM DÒNG NÀY ĐỂ ÉP TỰ ĐỘNG FOCUS KHI TẢI TRANG
+    passcodeInput.focus();
+    
     passcodeInput.addEventListener('keyup', (e) => {
         let val = e.target.value;
         val = val.replace(/[^0-9]/g, '');
@@ -97,6 +100,7 @@ document.getElementById('closeFormBtn').addEventListener('click', () => {
 });
 
 // Lắng nghe dữ liệu Realtime
+// Lắng nghe dữ liệu Realtime
 onValue(eventsRef, (snapshot) => {
     const data = snapshot.val();
     timeline.innerHTML = '';
@@ -111,8 +115,29 @@ onValue(eventsRef, (snapshot) => {
 
         window.loveEventsList.forEach((ev, index) => {
             const item = document.createElement('div');
-            item.className = 'timeline-item';
             
+            // ==========================================
+            // KIỂM TRA TRẠNG THÁI CẢM NGHĨ (THÊM VIỀN ĐỎ/XANH)
+            // ==========================================
+            const hasChiFeeling = ev.feelingChi && ev.feelingChi.trim() !== '';
+            const hasDuyFeeling = ev.feelingDuy && ev.feelingDuy.trim() !== '';
+            
+            // Mặc định class là timeline-item
+            let itemClasses = 'timeline-item';
+            
+            // Nếu cả 2 đều đã viết cảm nghĩ -> Viền Xanh
+            if (hasChiFeeling && hasDuyFeeling) {
+                itemClasses += ' complete-feelings';
+            } 
+            // Nếu 1 trong 2 (hoặc cả 2) chưa viết cảm nghĩ -> Viền Đỏ
+            else {
+                itemClasses += ' incomplete-feelings';
+            }
+            
+            // Gán class cho phần tử
+            item.className = itemClasses;
+            // ==========================================
+
             const dateObj = new Date(ev.date);
             const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
             
@@ -128,12 +153,12 @@ onValue(eventsRef, (snapshot) => {
             }
 
             let feelingsHTML = '';
-            if ((ev.feelingChi && ev.feelingChi.trim() !== '') || (ev.feelingDuy && ev.feelingDuy.trim() !== '')) {
+            if (hasChiFeeling || hasDuyFeeling) {
                 feelingsHTML += '<div class="feelings-container">';
-                if (ev.feelingChi && ev.feelingChi.trim() !== '') {
+                if (hasChiFeeling) {
                     feelingsHTML += `<div class="feeling-box feeling-chi"><span class="feeling-author">👩 Chi:</span>${ev.feelingChi}</div>`;
                 }
-                if (ev.feelingDuy && ev.feelingDuy.trim() !== '') {
+                if (hasDuyFeeling) {
                     feelingsHTML += `<div class="feeling-box feeling-duy"><span class="feeling-author">👦 Duy:</span>${ev.feelingDuy}</div>`;
                 }
                 feelingsHTML += '</div>';
