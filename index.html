@@ -5,270 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Our Love Journey ❤️</title>
     
+    <!-- Fonts & Thư viện Swiper -->
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
-
-    <style>
-        :root {
-            --primary-color: #ff6b81;
-            --bg-color: #ffeef2;
-            --card-bg: #ffffff;
-            --text-color: #333333;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: 'Quicksand', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            padding: 20px;
-        }
-
-        h1.title {
-            text-align: center; font-family: 'Dancing Script', cursive;
-            font-size: 3.5rem; color: var(--primary-color);
-            margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(255, 107, 129, 0.2);
-        }
-
-        .form-container {
-            max-width: 600px; margin: 0 auto 40px auto;
-            background: var(--card-bg); padding: 25px;
-            border-radius: 15px; box-shadow: 0 10px 20px rgba(255, 107, 129, 0.1);
-            scroll-margin-top: 20px;
-        }
-
-        .form-heading {
-            text-align: center;
-            color: var(--primary-color);
-            font-size: 1.3rem;
-            margin-bottom: 15px;
-            display: none;
-        }
-
-        .form-container input {
-            width: 100%; padding: 12px; margin-bottom: 15px;
-            border: 1px solid #ffd1d8; border-radius: 8px;
-            font-family: inherit; outline: none; transition: border 0.3s;
-        }
-
-        .form-container input:focus { border-color: var(--primary-color); }
-
-        .editor-wrapper {
-            margin-bottom: 15px;
-        }
-
-        .editor-toolbar {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: #fff0f3;
-            border: 1px solid #ffd1d8;
-            border-bottom: none;
-            border-radius: 8px 8px 0 0;
-            padding: 8px 12px;
-            flex-wrap: wrap;
-        }
-
-        .toolbar-btn {
-            background: white;
-            border: 1px solid #ffccd5;
-            color: #444;
-            padding: 5px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .toolbar-btn:hover {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-
-        .color-picker-group {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: white;
-            border: 1px solid #ffccd5;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            color: #666;
-            cursor: pointer;
-        }
-
-        .color-picker-group input[type="color"] {
-            -webkit-appearance: none;
-            border: none;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            cursor: pointer;
-            padding: 0;
-            margin: 0;
-            background: transparent;
-        }
-
-        .color-picker-group input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-        .color-picker-group input[type="color"]::-webkit-color-swatch { border: 1px solid #ccc; border-radius: 50%; }
-
-        .rich-editor {
-            min-height: 120px;
-            max-height: 300px;
-            padding: 12px;
-            border: 1px solid #ffd1d8;
-            border-radius: 0 0 8px 8px;
-            outline: none;
-            background: #ffffff;
-            overflow-y: auto;
-            line-height: 1.6;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-
-        .rich-editor:focus {
-            border-color: var(--primary-color);
-        }
-
-        .rich-editor:empty:before {
-            content: attr(data-placeholder);
-            color: #aaa;
-            pointer-events: none;
-            display: block;
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn-submit {
-            background-color: var(--primary-color); color: white;
-            border: none; padding: 12px 20px; border-radius: 8px;
-            cursor: pointer; flex: 1; font-size: 1.1rem;
-            font-weight: 600; transition: transform 0.2s, background 0.3s;
-        }
-
-        .btn-submit:hover { background-color: #ff4760; transform: translateY(-2px); }
-
-        .btn-cancel {
-            background-color: #b0bec5; color: white;
-            border: none; padding: 12px 20px; border-radius: 8px;
-            cursor: pointer; font-size: 1rem; font-weight: 600;
-            display: none; transition: background 0.3s;
-        }
-
-        .btn-cancel:hover { background-color: #90a4ae; }
-
-        .timeline { max-width: 800px; margin: 0 auto; position: relative; padding-left: 30px; }
-        .timeline::before {
-            content: ''; position: absolute; left: 10px; top: 0; bottom: 0;
-            width: 4px; background: #ffc4cf; border-radius: 2px;
-        }
-
-        .timeline-item {
-            position: relative; margin-bottom: 30px; background: var(--card-bg);
-            padding: 20px; padding-bottom: 45px; border-radius: 15px; 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: transform 0.3s;
-        }
-        .timeline-item:hover { transform: translateY(-5px); }
-
-        .timeline-item::before {
-            content: '❤️'; position: absolute; left: -33px; top: 20px;
-            background: var(--bg-color); border-radius: 50%; font-size: 1.2rem;
-        }
-
-        .timeline-date { color: var(--primary-color); font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; }
-        .timeline-title {
-            font-size: 1.5rem; margin-bottom: 10px; cursor: pointer;
-            color: var(--primary-color); text-decoration: underline; text-decoration-color: transparent;
-            transition: text-decoration-color 0.3s;
-        }
-        .timeline-title:hover { text-decoration-color: var(--primary-color); }
-        .timeline-content { line-height: 1.6; word-wrap: break-word; }
-
-        .timeline-actions {
-            position: absolute;
-            bottom: 12px;
-            right: 15px;
-            display: flex;
-            gap: 12px;
-        }
-
-        .btn-action {
-            background: transparent;
-            border: none;
-            color: #aaa;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: color 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 3px;
-        }
-
-        .btn-edit:hover { color: var(--primary-color); }
-        .btn-delete:hover { color: #ff4d4d; }
-
-        .modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;
-        }
-        .modal.active { display: flex; }
-        .modal-content { width: 90%; max-width: 800px; background: #fff; padding: 10px; border-radius: 10px; position: relative; }
-        .close-btn { position: absolute; top: -40px; right: 0; color: white; font-size: 2rem; cursor: pointer; }
-        .swiper { width: 100%; height: 400px; border-radius: 8px; }
-        .swiper-slide { display: flex; justify-content: center; align-items: center; }
-        .swiper-slide img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
-        .helper-text { font-size: 0.8rem; color: #888; margin-top: -10px; margin-bottom: 15px; display: block; }
-    </style>
+    
+    <!-- Liên kết file CSS của bạn -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <h1 class="title">Hành trình tình yêu ❤️</h1>
+    <!-- Thanh Điều Hướng (Menu) -->
+    <div class="top-nav">
+        <h1>Love Journey ❤️</h1>
+        <button class="btn-add" id="openFormBtn">➕ Thêm kỷ niệm</button>
+    </div>
 
-    <!-- Form nhập / chỉnh sửa sự kiện -->
-    <div class="form-container" id="formContainer">
-        <h2 class="form-heading" id="formHeading">Chỉnh sửa kỷ niệm ✏️</h2>
-        <form id="eventForm">
-            <input type="date" id="dateInput" required>
-            <input type="text" id="titleInput" placeholder="Tên sự kiện (VD: Lần đầu hẹn hò...)" required>
+    <!-- Khung đăng ký / sửa sự kiện (Ẩn trong Modal) -->
+    <div class="form-modal" id="formModal">
+        <div class="form-container">
+            <span class="close-form-btn" id="closeFormBtn">&times;</span>
+            <h2 class="form-heading" id="formHeading">Thêm kỷ niệm mới 💌</h2>
             
-            <!-- Khung Rich Text Editor có Thanh Công Cụ -->
-            <div class="editor-wrapper">
-                <div class="editor-toolbar">
-                    <button type="button" class="toolbar-btn" onclick="formatDoc('bold')" title="Chữ đậm"><b>B</b></button>
-                    <button type="button" class="toolbar-btn" onclick="formatDoc('italic')" title="Chữ nghiêng"><i>I</i></button>
-                    <button type="button" class="toolbar-btn" onclick="formatDoc('underline')" title="Gạch chân"><u>U</u></button>
-                    <button type="button" class="toolbar-btn" onclick="formatDoc('strikeThrough')" title="Gạch ngang"><s>S</s></button>
-                    
-                    <div class="color-picker-group" title="Màu chữ">
-                        <span>🎨 Màu chữ</span>
-                        <input type="color" value="#ff6b81" onchange="formatDoc('foreColor', this.value)">
+            <form id="eventForm">
+                <input type="date" id="dateInput" required>
+                <input type="text" id="titleInput" placeholder="Tên sự kiện (VD: Lần đầu hẹn hò...)" required>
+                
+                <!-- Khung Rich Text Editor -->
+                <div class="editor-wrapper">
+                    <div class="editor-toolbar">
+                        <button type="button" class="toolbar-btn" onclick="formatDoc('bold')" title="Chữ đậm"><b>B</b></button>
+                        <button type="button" class="toolbar-btn" onclick="formatDoc('italic')" title="Chữ nghiêng"><i>I</i></button>
+                        <button type="button" class="toolbar-btn" onclick="formatDoc('underline')" title="Gạch chân"><u>U</u></button>
+                        <button type="button" class="toolbar-btn" onclick="formatDoc('strikeThrough')" title="Gạch ngang"><s>S</s></button>
+                        
+                        <div class="color-picker-group" title="Màu chữ">
+                            <span>🎨 Chữ</span>
+                            <input type="color" value="#ff6b81" onchange="formatDoc('foreColor', this.value)">
+                        </div>
+                        <div class="color-picker-group" title="Màu nền chữ">
+                            <span>✨ Nền</span>
+                            <input type="color" value="#ffeef2" onchange="formatDoc('hiliteColor', this.value)">
+                        </div>
                     </div>
-
-                    <div class="color-picker-group" title="Màu nền chữ (Highlight)">
-                        <span>✨ Highlight</span>
-                        <input type="color" value="#ffeef2" onchange="formatDoc('hiliteColor', this.value)">
-                    </div>
+                    <div id="contentInput" class="rich-editor" contenteditable="true" data-placeholder="Ghi chú lại những kỷ niệm ngọt ngào..."></div>
                 </div>
-                <div id="contentInput" class="rich-editor" contenteditable="true" data-placeholder="Ghi chú lại những kỷ niệm ngọt ngào..."></div>
-            </div>
 
-            <input type="text" id="imagesInput" placeholder="Link ảnh (Tùy chọn)">
-            <span class="helper-text">Nếu có nhiều ảnh, hãy ngăn cách các link bằng dấu phẩy (,).</span>
-            
-            <div class="form-actions">
+                <input type="text" id="imagesInput" placeholder="Link ảnh (Tùy chọn)">
+                <span class="helper-text">Nếu có nhiều ảnh, hãy ngăn cách bằng dấu phẩy (,).</span>
+                
                 <button type="submit" class="btn-submit" id="submitBtn">Lưu Kỷ Niệm 💌</button>
-                <button type="button" class="btn-cancel" id="cancelBtn">Hủy ✖️</button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 
     <!-- Nơi hiển thị Timeline -->
@@ -277,9 +64,9 @@
     </div>
 
     <!-- Modal Slider Ảnh -->
-    <div class="modal" id="sliderModal">
+    <div class="slider-modal" id="sliderModal">
         <div class="modal-content">
-            <span class="close-btn" id="closeModal">&times;</span>
+            <span class="close-slider-btn" id="closeSliderBtn">&times;</span>
             <div class="swiper mySwiper">
                 <div class="swiper-wrapper" id="swiperWrapper"></div>
                 <div class="swiper-button-next"></div>
@@ -289,201 +76,10 @@
         </div>
     </div>
 
+    <!-- Thư viện Javascript Swiper -->
     <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
 
-    <!-- Import Firebase Module -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-
-        const firebaseConfig = {
-          apiKey: "AIzaSyBxkDY6uEMMwZy8r29wyixjNbBBka5mQk0",
-          authDomain: "our-love-journey-c2da0.firebaseapp.com",
-          databaseURL: "https://our-love-journey-c2da0-default-rtdb.asia-southeast1.firebasedatabase.app",
-          projectId: "our-love-journey-c2da0",
-          storageBucket: "our-love-journey-c2da0.firebasestorage.app",
-          messagingSenderId: "428563386307",
-          appId: "1:428563386307:web:b2c4daacc93aaf19b1f776"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const eventsRef = ref(db, 'loveEvents');
-
-        window.loveEventsList = [];
-        let swiperInstance = null;
-        let editingKey = null;
-        
-        const timeline = document.getElementById('timeline');
-        const eventForm = document.getElementById('eventForm');
-        const contentInput = document.getElementById('contentInput');
-        const formHeading = document.getElementById('formHeading');
-        const submitBtn = document.getElementById('submitBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const formContainer = document.getElementById('formContainer');
-
-        // Thao tác định dạng văn bản
-        window.formatDoc = function(cmd, value = null) {
-            document.execCommand(cmd, false, value);
-            contentInput.focus();
-        };
-
-        // Lắng nghe dữ liệu Realtime
-        onValue(eventsRef, (snapshot) => {
-            const data = snapshot.val();
-            timeline.innerHTML = '';
-
-            if (data) {
-                window.loveEventsList = Object.entries(data).map(([key, value]) => ({
-                    key,
-                    ...value
-                }));
-                
-                window.loveEventsList.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                window.loveEventsList.forEach((ev, index) => {
-                    const item = document.createElement('div');
-                    item.className = 'timeline-item';
-                    
-                    const dateObj = new Date(ev.date);
-                    const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                    const photoIcon = (ev.images && ev.images.length > 0) ? '📸' : '';
-
-                    item.innerHTML = `
-                        <div class="timeline-date">${dateStr}</div>
-                        <div class="timeline-title" onclick="openSlider(${index})">${ev.title} ${photoIcon}</div>
-                        <div class="timeline-content">${ev.content}</div>
-                        <div class="timeline-actions">
-                            <button class="btn-action btn-edit" onclick="editEvent('${ev.key}')" title="Sửa kỷ niệm">✏️ Sửa</button>
-                            <button class="btn-action btn-delete" onclick="deleteEvent('${ev.key}')" title="Xóa kỷ niệm">🗑️ Xóa</button>
-                        </div>
-                    `;
-                    timeline.appendChild(item);
-                });
-            } else {
-                timeline.innerHTML = '<p style="text-align:center; color:#888;">Chưa có kỷ niệm nào. Hãy tạo kỷ niệm đầu tiên nhé!</p>';
-            }
-        });
-
-        // Kích hoạt chế độ Chỉnh sửa
-        window.editEvent = function(key) {
-            const ev = window.loveEventsList.find(item => item.key === key);
-            if (!ev) return;
-
-            editingKey = key;
-
-            document.getElementById('dateInput').value = ev.date || '';
-            document.getElementById('titleInput').value = ev.title || '';
-            contentInput.innerHTML = ev.content || '';
-            document.getElementById('imagesInput').value = (ev.images && ev.images.length > 0) ? ev.images.join(', ') : '';
-
-            formHeading.style.display = 'block';
-            submitBtn.innerText = 'Cập Nhật Kỷ Niệm 💾';
-            cancelBtn.style.display = 'block';
-
-            formContainer.scrollIntoView({ behavior: 'smooth' });
-        };
-
-        // Reset Form
-        function resetFormState() {
-            editingKey = null;
-            eventForm.reset();
-            contentInput.innerHTML = '';
-            formHeading.style.display = 'none';
-            submitBtn.innerText = 'Lưu Kỷ Niệm 💌';
-            cancelBtn.style.display = 'none';
-        }
-
-        cancelBtn.addEventListener('click', resetFormState);
-
-        // Xóa kỷ niệm
-        window.deleteEvent = async function(key) {
-            if (confirm("Bạn có chắc chắn muốn xóa kỷ niệm này không? 🥺")) {
-                try {
-                    const itemRef = ref(db, `loveEvents/${key}`);
-                    await remove(itemRef);
-                    if (editingKey === key) resetFormState();
-                } catch (error) {
-                    alert("Lỗi khi xóa: " + error.message);
-                }
-            }
-        };
-
-        // Gửi dữ liệu (Thêm mới hoặc Cập nhật)
-        eventForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const contentHTML = contentInput.innerHTML.trim();
-            if (contentInput.innerText.trim() === '' && !contentInput.querySelector('img')) {
-                alert("Vui lòng nhập nội dung kỷ niệm!");
-                return;
-            }
-
-            submitBtn.innerText = editingKey ? 'Đang cập nhật...' : 'Đang lưu...';
-
-            const date = document.getElementById('dateInput').value;
-            const title = document.getElementById('titleInput').value;
-            const content = contentHTML;
-            const imagesStr = document.getElementById('imagesInput').value;
-            
-            let images = [];
-            if(imagesStr.trim() !== '') {
-                images = imagesStr.split(',').map(img => img.trim()).filter(img => img !== '');
-            }
-
-            const eventData = { date, title, content, images };
-
-            try {
-                if (editingKey) {
-                    const itemRef = ref(db, `loveEvents/${editingKey}`);
-                    await update(itemRef, eventData);
-                } else {
-                    await push(eventsRef, eventData);
-                }
-                resetFormState();
-            } catch (error) {
-                alert("Lỗi: " + error.message);
-            } finally {
-                submitBtn.innerText = editingKey ? 'Cập Nhật Kỷ Niệm 💾' : 'Lưu Kỷ Niệm 💌';
-            }
-        });
-
-        // Modal Slider Ảnh
-        const sliderModal = document.getElementById('sliderModal');
-        const closeModal = document.getElementById('closeModal');
-        const swiperWrapper = document.getElementById('swiperWrapper');
-
-        window.openSlider = function(index) {
-            const event = window.loveEventsList[index];
-            if (!event.images || event.images.length === 0) {
-                alert("Sự kiện này chưa có ảnh nào! 🥺");
-                return;
-            }
-
-            swiperWrapper.innerHTML = '';
-            event.images.forEach(imgUrl => {
-                const slide = document.createElement('div');
-                slide.className = 'swiper-slide';
-                slide.innerHTML = `<img src="${imgUrl}" alt="Kỷ niệm" onerror="this.src='https://via.placeholder.com/600x400?text=Lỗi+tải+ảnh'">`;
-                swiperWrapper.appendChild(slide);
-            });
-
-            sliderModal.classList.add('active');
-
-            if (swiperInstance) {
-                swiperInstance.destroy(true, true);
-            }
-            swiperInstance = new Swiper(".mySwiper", {
-                navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
-                pagination: { el: ".swiper-pagination", clickable: true },
-                loop: event.images.length > 1
-            });
-        }
-
-        closeModal.addEventListener('click', () => sliderModal.classList.remove('active'));
-        sliderModal.addEventListener('click', (e) => {
-            if (e.target === sliderModal) sliderModal.classList.remove('active');
-        });
-    </script>
+    <!-- Liên kết file JS của bạn (Lưu ý: phải có type="module") -->
+    <script type="module" src="script.js"></script>
 </body>
 </html>
