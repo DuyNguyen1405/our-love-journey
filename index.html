@@ -9,77 +9,98 @@
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
     
-    <!-- Liên kết file CSS của bạn -->
+    <!-- Liên kết file CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Thanh Điều Hướng (Menu) -->
-    <div class="top-nav">
-        <h1>Love Journey ❤️</h1>
-        <button class="btn-add" id="openFormBtn">➕ Thêm kỷ niệm</button>
-    </div>
-
-    <!-- Khung đăng ký / sửa sự kiện (Ẩn trong Modal) -->
-    <div class="form-modal" id="formModal">
-        <div class="form-container">
-            <span class="close-form-btn" id="closeFormBtn">&times;</span>
-            <h2 class="form-heading" id="formHeading">Thêm kỷ niệm mới 💌</h2>
-            
-            <form id="eventForm">
-                <input type="date" id="dateInput" required>
-                <input type="text" id="titleInput" placeholder="Tên sự kiện (VD: Lần đầu hẹn hò...)" required>
-                
-                <!-- Khung Rich Text Editor -->
-                <div class="editor-wrapper">
-                    <div class="editor-toolbar">
-                        <button type="button" class="toolbar-btn" onclick="formatDoc('bold')" title="Chữ đậm"><b>B</b></button>
-                        <button type="button" class="toolbar-btn" onclick="formatDoc('italic')" title="Chữ nghiêng"><i>I</i></button>
-                        <button type="button" class="toolbar-btn" onclick="formatDoc('underline')" title="Gạch chân"><u>U</u></button>
-                        <button type="button" class="toolbar-btn" onclick="formatDoc('strikeThrough')" title="Gạch ngang"><s>S</s></button>
-                        
-                        <div class="color-picker-group" title="Màu chữ">
-                            <span>🎨 Chữ</span>
-                            <input type="color" value="#ff6b81" onchange="formatDoc('foreColor', this.value)">
-                        </div>
-                        <div class="color-picker-group" title="Màu nền chữ">
-                            <span>✨ Nền</span>
-                            <input type="color" value="#ffeef2" onchange="formatDoc('hiliteColor', this.value)">
-                        </div>
-                    </div>
-                    <div id="contentInput" class="rich-editor" contenteditable="true" data-placeholder="Ghi chú lại những kỷ niệm ngọt ngào..."></div>
-                </div>
-
-                <input type="text" id="imagesInput" placeholder="Link ảnh (Tùy chọn)">
-                <span class="helper-text">Nếu có nhiều ảnh, hãy ngăn cách bằng dấu phẩy (,).</span>
-                
-                <button type="submit" class="btn-submit" id="submitBtn">Lưu Kỷ Niệm 💌</button>
-            </form>
+    <!-- ========================================== -->
+    <!-- MÀN HÌNH KHÓA (BẢO MẬT BẰNG SINH NHẬT) -->
+    <!-- ========================================== -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-box">
+            <h2>Bảo mật tình yêu 🔒</h2>
+            <p>Hãy nhập sinh nhật bạn theo dạng ngày tháng</p>
+            <input type="password" id="passcodeInput" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
+            <p id="errorMessage" class="error-msg">Quên sinh nhật mình rồi à 🥺</p>
         </div>
     </div>
 
-    <!-- Nơi hiển thị Timeline -->
-    <div class="timeline" id="timeline">
-        <p style="text-align:center; color:#888;">Đang tải kỷ niệm của chúng mình...</p>
-    </div>
+    <!-- ========================================== -->
+    <!-- NỘI DUNG CHÍNH CỦA TRANG WEB (ẨN MẶC ĐỊNH) -->
+    <!-- ========================================== -->
+    <div id="mainContent" style="display: none;">
+        
+        <!-- Thanh Điều Hướng (Menu) -->
+        <div class="top-nav">
+            <h1>Love Journey ❤️</h1>
+            <button class="btn-add" id="openFormBtn">➕ Thêm kỷ niệm</button>
+        </div>
 
-    <!-- Modal Slider Ảnh -->
-    <div class="slider-modal" id="sliderModal">
-        <div class="modal-content">
-            <span class="close-slider-btn" id="closeSliderBtn">&times;</span>
-            <div class="swiper mySwiper">
-                <div class="swiper-wrapper" id="swiperWrapper"></div>
-                <div class="swiper-button-next"></div>
-                <div class="swiper-button-prev"></div>
-                <div class="swiper-pagination"></div>
+        <!-- Khung đăng ký / sửa sự kiện (Modal) -->
+        <div class="form-modal" id="formModal">
+            <!-- (Giữ nguyên toàn bộ form bên trong như cũ) -->
+            <div class="form-container">
+                <span class="close-form-btn" id="closeFormBtn">&times;</span>
+                <h2 class="form-heading" id="formHeading">Thêm kỷ niệm mới 💌</h2>
+                
+                <form id="eventForm">
+                    <input type="date" id="dateInput" required>
+                    <input type="text" id="titleInput" placeholder="Tên sự kiện (VD: Lần đầu hẹn hò...)" required>
+                    
+                    <div class="editor-wrapper">
+                        <div class="editor-toolbar">
+                            <button type="button" class="toolbar-btn" onclick="formatDoc('bold')" title="Chữ đậm"><b>B</b></button>
+                            <button type="button" class="toolbar-btn" onclick="formatDoc('italic')" title="Chữ nghiêng"><i>I</i></button>
+                            <button type="button" class="toolbar-btn" onclick="formatDoc('underline')" title="Gạch chân"><u>U</u></button>
+                            <button type="button" class="toolbar-btn" onclick="formatDoc('strikeThrough')" title="Gạch ngang"><s>S</s></button>
+                            
+                            <div class="color-picker-group" title="Màu chữ">
+                                <span>🎨 Chữ</span>
+                                <input type="color" value="#ff6b81" onchange="formatDoc('foreColor', this.value)">
+                            </div>
+                            <div class="color-picker-group" title="Màu nền chữ">
+                                <span>✨ Nền</span>
+                                <input type="color" value="#ffeef2" onchange="formatDoc('hiliteColor', this.value)">
+                            </div>
+                        </div>
+                        <div id="contentInput" class="rich-editor" contenteditable="true" data-placeholder="Ghi chú lại những kỷ niệm ngọt ngào..."></div>
+                    </div>
+
+                    <input type="text" id="imagesInput" placeholder="Link ảnh (Tùy chọn)">
+                    <span class="helper-text">Nếu có nhiều ảnh, hãy ngăn cách bằng dấu phẩy (,).</span>
+                    
+                    <button type="submit" class="btn-submit" id="submitBtn">Lưu Kỷ Niệm 💌</button>
+                </form>
             </div>
         </div>
-    </div>
+
+        <!-- Nơi hiển thị Timeline -->
+        <div class="timeline" id="timeline">
+            <p style="text-align:center; color:#888;">Đang tải kỷ niệm của chúng mình...</p>
+        </div>
+
+        <!-- Modal Slider Ảnh -->
+        <div class="slider-modal" id="sliderModal">
+            <div class="modal-content">
+                <span class="close-slider-btn" id="closeSliderBtn">&times;</span>
+                <div class="swiper mySwiper">
+                    <div class="swiper-wrapper" id="swiperWrapper"></div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
+                    <div class="swiper-pagination"></div>
+                </div>
+            </div>
+        </div>
+
+    </div> <!-- Kết thúc div mainContent -->
 
     <!-- Thư viện Javascript Swiper -->
     <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
-
-    <!-- Liên kết file JS của bạn (Lưu ý: phải có type="module") -->
+    <!-- Cấu hình Firebase (Lớp bảo vệ 2) -->
+    <script src="firebase-config.js"></script>
+    <!-- Javascript chính -->
     <script type="module" src="script.js"></script>
+
 </body>
 </html>

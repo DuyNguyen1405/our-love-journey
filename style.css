@@ -204,3 +204,106 @@ body {
 .swiper-slide { display: flex; justify-content: center; align-items: center; }
 .swiper-slide img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
 .helper-text { font-size: 0.8rem; color: #888; margin-top: -10px; margin-bottom: 15px; display: block; }
+
+/* --- Lưới ảnh thu nhỏ (Thumbnail Gallery) --- */
+.timeline-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.timeline-gallery img {
+    width: 80px; /* Chiều rộng ảnh nhỏ */
+    height: 80px; /* Chiều cao ảnh nhỏ */
+    object-fit: cover; /* Cắt cúp ảnh vuông vắn không bị méo */
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid #ffeef2;
+    transition: transform 0.2s, border-color 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.timeline-gallery img:hover {
+    transform: scale(1.08); /* Phóng to nhẹ khi di chuột */
+    border-color: var(--primary-color);
+}
+
+/* ========================================= */
+/* CSS CHO MÀN HÌNH ĐĂNG NHẬP (LOGIN SCREEN) */
+/* ========================================= */
+.login-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    /* Ảnh nền chủ đề tình yêu lãng mạn */
+    background-image: url('https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.8s ease; /* Hiệu ứng mờ dần mượt mà */
+}
+
+/* Hộp kính mờ Glassmorphism */
+.login-box {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 40px 30px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    max-width: 400px;
+    width: 90%;
+}
+
+.login-box h2 {
+    color: var(--primary-color);
+    font-family: 'Dancing Script', cursive;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.login-box p {
+    margin-bottom: 20px;
+    color: #444;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+/* Ô nhập mật khẩu */
+.login-box input {
+    width: 180px;
+    padding: 15px;
+    font-size: 2.2rem;
+    text-align: center;
+    letter-spacing: 12px;
+    border: 2px solid #ffd1d8;
+    border-radius: 12px;
+    outline: none;
+    color: var(--primary-color);
+    background: rgba(255,255,255,0.9);
+    transition: 0.3s;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: bold;
+}
+
+.login-box input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(255, 107, 129, 0.4);
+}
+
+/* Lời báo lỗi */
+.error-msg {
+    color: #e74c3c !important;
+    margin-top: 20px !important;
+    font-size: 1.1rem !important;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.error-msg.active {
+    opacity: 1; /* Hiện chữ khi nhập sai */
+}

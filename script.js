@@ -70,12 +70,26 @@ onValue(eventsRef, (snapshot) => {
             
             const dateObj = new Date(ev.date);
             const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const photoIcon = (ev.images && ev.images.length > 0) ? '📸' : '';
+            
+            // Xử lý render danh sách ảnh thu nhỏ (Thumbnails)
+            let galleryHTML = '';
+            let photoIcon = '';
+            if (ev.images && ev.images.length > 0) {
+                photoIcon = '📸';
+                galleryHTML = '<div class="timeline-gallery">';
+                ev.images.forEach((imgUrl, imgIndex) => {
+                    // Khi bấm vào ảnh nhỏ, truyền luôn vị trí của ảnh (imgIndex) vào hàm openSlider
+                    galleryHTML += `<img src="${imgUrl}" alt="Thumbnail" onclick="openSlider(${index}, ${imgIndex})" onerror="this.style.display='none'" title="Bấm để xem ảnh to">`;
+                });
+                galleryHTML += '</div>';
+            }
 
+            // Gắn giao diện vào item
             item.innerHTML = `
                 <div class="timeline-date">${dateStr}</div>
-                <div class="timeline-title" onclick="openSlider(${index})">${ev.title} ${photoIcon}</div>
+                <div class="timeline-title" onclick="openSlider(${index}, 0)">${ev.title} ${photoIcon}</div>
                 <div class="timeline-content">${ev.content}</div>
+                ${galleryHTML} <!-- Thêm lưới ảnh thu nhỏ vào dưới nội dung -->
                 <div class="timeline-actions">
                     <button class="btn-action btn-edit" onclick="editEvent('${ev.key}')" title="Sửa kỷ niệm">✏️ Sửa</button>
                     <button class="btn-action btn-delete" onclick="deleteEvent('${ev.key}')" title="Xóa kỷ niệm">🗑️ Xóa</button>
@@ -157,13 +171,14 @@ eventForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Modal Slider Ảnh
+// Modal Slider Ảnh (Đã nâng cấp tham số nhận vào)
 const sliderModal = document.getElementById('sliderModal');
 const closeSliderBtn = document.getElementById('closeSliderBtn');
 const swiperWrapper = document.getElementById('swiperWrapper');
 
-window.openSlider = function(index) {
-    const event = window.loveEventsList[index];
+// Hàm openSlider giờ đây nhận thêm tham số initialSlideIndex
+window.openSlider = function(eventIndex, initialSlideIndex = 0) {
+    const event = window.loveEventsList[eventIndex];
     if (!event.images || event.images.length === 0) {
         alert("Sự kiện này chưa có ảnh nào! 🥺");
         return;
@@ -182,7 +197,10 @@ window.openSlider = function(index) {
     if (swiperInstance) {
         swiperInstance.destroy(true, true);
     }
+    
+    // Khởi tạo lại Swiper và cấu hình ảnh bắt đầu (initialSlide)
     swiperInstance = new Swiper(".mySwiper", {
+        initialSlide: initialSlideIndex, // Hiển thị ảnh đúng với ảnh vừa bấm vào
         navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
         pagination: { el: ".swiper-pagination", clickable: true },
         loop: event.images.length > 1
@@ -192,4 +210,41 @@ window.openSlider = function(index) {
 closeSliderBtn.addEventListener('click', () => sliderModal.classList.remove('active'));
 sliderModal.addEventListener('click', (e) => {
     if (e.target === sliderModal) sliderModal.classList.remove('active');
+});
+
+// ==========================================
+// LOGIC KIỂM TRA MẬT KHẨU (SINH NHẬT)
+// ==========================================
+const passcodeInput = document.getElementById('passcodeInput');
+const errorMessage = document.getElementById('errorMessage');
+const loginScreen = document.getElementById('loginScreen');
+const mainContent = document.getElementById('mainContent');
+
+passcodeInput.addEventListener('input', (e) => {
+    // Chỉ cho phép nhập số
+    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    const val = e.target.value;
+
+    // Ẩn lỗi khi người dùng bắt đầu nhập lại
+    if(errorMessage.classList.contains('active')) {
+        errorMessage.classList.remove('active');
+    }
+
+    // Tự động kiểm tra ngay khi nhập đủ 4 số
+    if (val.length === 4) {
+        if (val === '1405' || val === '1704') {
+            // Đúng mật khẩu -> Làm mờ màn hình đăng nhập
+            loginScreen.style.opacity = '0';
+            
+            // Đợi 0.8s cho hiệu ứng mờ kết thúc rồi mới hiển thị nội dung chính
+            setTimeout(() => {
+                loginScreen.style.display = 'none';
+                mainContent.style.display = 'block';
+            }, 800);
+        } else {
+            // Sai mật khẩu -> Báo lỗi màu đỏ và xóa trắng ô nhập
+            errorMessage.classList.add('active');
+            passcodeInput.value = '';
+        }
+    }
 });
