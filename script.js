@@ -16,13 +16,14 @@ const db = getDatabase(app);
 
 // Các bảng dữ liệu trên Firebase
 const eventsRef = ref(db, 'loveEvents_BiMat123'); 
-const settingsRef = ref(db, 'loveSettings_BiMat123/nicknames'); // Bảng lưu biệt danh
+const settingsRef = ref(db, 'loveSettings_BiMat123'); // Cài đặt: biệt danh + ghi chú
 
 // Biến lưu trữ toàn cục
 window.loveEventsList = [];
 let currentEventsData = null; // Chứa dữ liệu thô của sự kiện
 let nicknameDuy = ''; // Biệt danh Duy
 let nicknameChi = ''; // Biệt danh Chi
+let settingsNote = ''; // Ghi chú chung
 
 let swiperInstance = null;
 let editingKey = null;
@@ -85,16 +86,13 @@ if (passcodeInput && errorMessage && loginScreen && mainContent) {
 // ĐỒNG BỘ DỮ LIỆU TỪ FIREBASE VÀ RENDER TIMELINE
 // ----------------------------------------------------
 
-// 1. Lắng nghe thay đổi Cài đặt (Biệt danh)
+// 1. Lắng nghe thay đổi Cài đặt (Biệt danh + ghi chú)
 onValue(settingsRef, (snapshot) => {
     const data = snapshot.val();
-    if (data) {
-        nicknameDuy = data.duy || '';
-        nicknameChi = data.chi || '';
-    } else {
-        nicknameDuy = '';
-        nicknameChi = '';
-    }
+    const nicknames = data?.nicknames || {};
+    nicknameDuy = nicknames.duy || '';
+    nicknameChi = nicknames.chi || '';
+    settingsNote = data?.note || '';
     
     // Cập nhật lại lời chào nếu đổi biệt danh ngay lúc đang online
     if (currentUser) {
@@ -198,6 +196,7 @@ document.getElementById('openSettingsBtn').addEventListener('click', () => {
     // Đổ dữ liệu hiện tại vào form cài đặt
     document.getElementById('nicknameDuy').value = nicknameDuy;
     document.getElementById('nicknameChi').value = nicknameChi;
+    document.getElementById('settingsNote').value = settingsNote;
     settingsModal.classList.add('active');
 });
 
@@ -216,13 +215,15 @@ settingsForm.addEventListener('submit', async (e) => {
 
     const nDuy = document.getElementById('nicknameDuy').value.trim();
     const nChi = document.getElementById('nicknameChi').value.trim();
+    const note = document.getElementById('settingsNote').value.trim();
 
     try {
         await update(ref(db, 'loveSettings_BiMat123'), {
             nicknames: {
                 duy: nDuy,
                 chi: nChi
-            }
+            },
+            note
         });
         settingsModal.classList.remove('active');
     } catch (error) {

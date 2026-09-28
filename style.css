@@ -406,8 +406,9 @@ body {
     font-size: 0.9rem;
 }
 
-/* Ô nhập cảm nghĩ trong Form */
-#feelingInput {
+/* Ô nhập cảm nghĩ trong Form / ghi chú cài đặt */
+#feelingInput,
+#settingsNote {
     width: 100%;
     padding: 12px;
     border: 1px solid #ffd1d8;
@@ -417,6 +418,7 @@ body {
     transition: border 0.3s;
     resize: vertical;
 }
-#feelingInput:focus {
+#feelingInput:focus,
+#settingsNote:focus {
     border-color: var(--primary-color);
 }
