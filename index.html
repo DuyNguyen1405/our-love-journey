@@ -31,9 +31,33 @@
                 <!-- Lời chào người dùng -->
                 <p id="userGreeting" style="color: var(--primary-color); font-weight: 600; margin-top: 5px;"></p>
             </div>
-            <button class="btn-add" id="openFormBtn">➕ Thêm kỷ niệm</button>
+            <div class="nav-buttons">
+                <button class="btn-settings" id="openSettingsBtn" title="Cài đặt biệt danh">⚙️</button>
+                <button class="btn-add" id="openFormBtn">➕ Thêm kỷ niệm</button>
+            </div>
         </div>
 
+        <!-- Khung Cài đặt Biệt danh (Modal) -->
+        <div class="form-modal" id="settingsModal">
+            <div class="form-container">
+                <span class="close-form-btn" id="closeSettingsBtn">&times;</span>
+                <h2 class="form-heading" style="display: block; margin-bottom: 25px;">Cài đặt Biệt danh ⚙️</h2>
+                
+                <form id="settingsForm">
+                    <div style="margin-bottom: 15px;">
+                        <label for="nicknameDuy" style="font-weight: 600; color: #1c7ed6; display: block; margin-bottom: 5px;">Biệt danh của Duy 👦</label>
+                        <input type="text" id="nicknameDuy" placeholder="Ví dụ: Chồng yêu, Anh gấu...">
+                    </div>
+                    <div style="margin-bottom: 25px;">
+                        <label for="nicknameChi" style="font-weight: 600; color: #d6336c; display: block; margin-bottom: 5px;">Biệt danh của Chi 👩</label>
+                        <input type="text" id="nicknameChi" placeholder="Ví dụ: Vợ yêu, Bé mèo...">
+                    </div>
+                    
+                    <button type="submit" class="btn-submit" id="saveSettingsBtn">Lưu Cài Đặt 💾</button>
+                </form>
+            </div>
+        </div>
+        
         <!-- Khung đăng ký / sửa sự kiện -->
         <div class="form-modal" id="formModal">
             <div class="form-container">

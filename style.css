@@ -17,8 +17,8 @@ body {
 /* Thanh Menu Top */
 .top-nav {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: space-between; /* Đẩy phần text sang trái, phần nút sang phải */
+    align-items: center; /* Căn giữa theo chiều dọc */
     max-width: 800px;
     margin: 0 auto 30px auto;
     background: var(--card-bg);
@@ -27,12 +27,44 @@ body {
     box-shadow: 0 5px 15px rgba(255, 107, 129, 0.1);
 }
 
+/* Phần text căn trái (Nếu cần thiết, nhưng flexbox đã tự động xử lý) */
+.top-nav > div:first-child {
+    text-align: left;
+}
+
 .top-nav h1 {
     font-family: 'Dancing Script', cursive;
     color: var(--primary-color);
     font-size: 2.2rem;
     margin: 0;
     text-shadow: 1px 1px 2px rgba(255, 107, 129, 0.2);
+}
+
+/* ========================================= */
+/* CSS CHO CÁC NÚT TRÊN THANH MENU           */
+/* ========================================= */
+.nav-buttons {
+    display: flex;
+    gap: 10px; /* Tạo khoảng cách 10px giữa 2 nút */
+    align-items: center;
+    justify-content: flex-end; /* Căn phải cho nhóm nút */
+}
+
+.btn-settings {
+    background-color: #fff0f3;
+    color: var(--primary-color);
+    border: 1px solid #ffccd5;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: 0.3s;
+    box-shadow: 0 4px 6px rgba(255, 107, 129, 0.1);
+}
+
+.btn-settings:hover {
+    background-color: #ffccd5;
+    transform: translateY(-2px);
 }
 
 .btn-add {

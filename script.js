@@ -1,9 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getDatabase, ref, push, onValue, remove, update, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-// ==========================================
-// CẤU HÌNH FIREBASE TRỰC TIẾP TẠI ĐÂY
-// ==========================================
 const firebaseConfig = {
     apiKey: "AIzaSyBxkDY6uEMMwZy8r29wyixjNbBBka5mQk0",
     authDomain: "our-love-journey-c2da0.firebaseapp.com",
@@ -16,14 +13,21 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const eventsRef = ref(db, 'loveEvents_BiMat123'); // Tên bảng dữ liệu
 
+// Các bảng dữ liệu trên Firebase
+const eventsRef = ref(db, 'loveEvents_BiMat123'); 
+const settingsRef = ref(db, 'loveSettings_BiMat123/nicknames'); // Bảng lưu biệt danh
+
+// Biến lưu trữ toàn cục
 window.loveEventsList = [];
+let currentEventsData = null; // Chứa dữ liệu thô của sự kiện
+let nicknameDuy = ''; // Biệt danh Duy
+let nicknameChi = ''; // Biệt danh Chi
+
 let swiperInstance = null;
 let editingKey = null;
-let currentUser = ''; // 'Duy' hoặc 'Chi'
+let currentUser = ''; 
 
-// Biến giao diện
 const timeline = document.getElementById('timeline');
 const eventForm = document.getElementById('eventForm');
 const contentInput = document.getElementById('contentInput');
@@ -33,18 +37,15 @@ const formModal = document.getElementById('formModal');
 const feelingInput = document.getElementById('feelingInput');
 const userGreeting = document.getElementById('userGreeting');
 
-// ==========================================
-// LOGIC KIỂM TRA MẬT KHẨU (ĐÃ SỬA LỖI)
-// ==========================================
+// Logic đăng nhập
 const passcodeInput = document.getElementById('passcodeInput');
 const errorMessage = document.getElementById('errorMessage');
 const loginScreen = document.getElementById('loginScreen');
 const mainContent = document.getElementById('mainContent');
 
 if (passcodeInput && errorMessage && loginScreen && mainContent) {
-    // THÊM DÒNG NÀY ĐỂ ÉP TỰ ĐỘNG FOCUS KHI TẢI TRANG
-    passcodeInput.focus();
-    
+    passcodeInput.focus(); 
+
     passcodeInput.addEventListener('keyup', (e) => {
         let val = e.target.value;
         val = val.replace(/[^0-9]/g, '');
@@ -58,12 +59,14 @@ if (passcodeInput && errorMessage && loginScreen && mainContent) {
             if (val === '1405' || val === '1704') {
                 currentUser = (val === '1405') ? 'Duy' : 'Chi';
                 
+                // Hiển thị lời chào có kèm biệt danh (nếu đã tải xong)
+                const currentNickname = (currentUser === 'Duy') ? nicknameDuy : nicknameChi;
+                const greetingName = currentNickname ? `${currentUser} (${currentNickname})` : currentUser;
                 if(userGreeting) {
-                    userGreeting.innerText = `Chào ${currentUser} ❤️`;
+                    userGreeting.innerText = `Chào ${greetingName} ❤️`;
                 }
 
                 passcodeInput.disabled = true;
-
                 loginScreen.style.opacity = '0';
                 
                 setTimeout(() => {
@@ -78,13 +81,166 @@ if (passcodeInput && errorMessage && loginScreen && mainContent) {
     });
 }
 
-// Thao tác định dạng văn bản
+// ----------------------------------------------------
+// ĐỒNG BỘ DỮ LIỆU TỪ FIREBASE VÀ RENDER TIMELINE
+// ----------------------------------------------------
+
+// 1. Lắng nghe thay đổi Cài đặt (Biệt danh)
+onValue(settingsRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        nicknameDuy = data.duy || '';
+        nicknameChi = data.chi || '';
+    } else {
+        nicknameDuy = '';
+        nicknameChi = '';
+    }
+    
+    // Cập nhật lại lời chào nếu đổi biệt danh ngay lúc đang online
+    if (currentUser) {
+        const currentNickname = (currentUser === 'Duy') ? nicknameDuy : nicknameChi;
+        const greetingName = currentNickname ? `${currentUser} (${currentNickname})` : currentUser;
+        userGreeting.innerText = `Chào ${greetingName} ❤️`;
+    }
+
+    renderTimeline(); // Vẽ lại timeline với biệt danh mới
+});
+
+// 2. Lắng nghe thay đổi Sự kiện
+onValue(eventsRef, (snapshot) => {
+    currentEventsData = snapshot.val();
+    renderTimeline(); // Vẽ lại timeline với sự kiện mới
+});
+
+// 3. Hàm vẽ Timeline
+function renderTimeline() {
+    timeline.innerHTML = '';
+
+    if (!currentEventsData) {
+        timeline.innerHTML = '<p style="text-align:center; color:#888;">Chưa có kỷ niệm nào. Hãy tạo kỷ niệm đầu tiên nhé!</p>';
+        return;
+    }
+
+    window.loveEventsList = Object.entries(currentEventsData).map(([key, value]) => ({
+        key,
+        ...value
+    }));
+    
+    window.loveEventsList.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    window.loveEventsList.forEach((ev, index) => {
+        const item = document.createElement('div');
+        
+        const hasChiFeeling = ev.feelingChi && ev.feelingChi.trim() !== '';
+        const hasDuyFeeling = ev.feelingDuy && ev.feelingDuy.trim() !== '';
+        
+        let itemClasses = 'timeline-item';
+        if (hasChiFeeling && hasDuyFeeling) {
+            itemClasses += ' complete-feelings';
+        } else {
+            itemClasses += ' incomplete-feelings';
+        }
+        item.className = itemClasses;
+
+        const dateObj = new Date(ev.date);
+        const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        
+        let galleryHTML = '';
+        let photoIcon = '';
+        if (ev.images && ev.images.length > 0) {
+            photoIcon = '📸';
+            galleryHTML = '<div class="timeline-gallery">';
+            ev.images.forEach((imgUrl, imgIndex) => {
+                galleryHTML += `<img src="${imgUrl}" alt="Thumbnail" onclick="openSlider(${index}, ${imgIndex})" onerror="this.style.display='none'">`;
+            });
+            galleryHTML += '</div>';
+        }
+
+        let feelingsHTML = '';
+        if (hasChiFeeling || hasDuyFeeling) {
+            feelingsHTML += '<div class="feelings-container">';
+            
+            // Xử lý hiển thị tên + Biệt danh
+            const labelChi = nicknameChi ? `Chi (${nicknameChi})` : 'Chi';
+            const labelDuy = nicknameDuy ? `Duy (${nicknameDuy})` : 'Duy';
+
+            if (hasChiFeeling) {
+                feelingsHTML += `<div class="feeling-box feeling-chi"><span class="feeling-author">👩 ${labelChi}:</span>${ev.feelingChi}</div>`;
+            }
+            if (hasDuyFeeling) {
+                feelingsHTML += `<div class="feeling-box feeling-duy"><span class="feeling-author">👦 ${labelDuy}:</span>${ev.feelingDuy}</div>`;
+            }
+            feelingsHTML += '</div>';
+        }
+
+        item.innerHTML = `
+            <div class="timeline-date">${dateStr}</div>
+            <div class="timeline-title" onclick="openSlider(${index}, 0)">${ev.title} ${photoIcon}</div>
+            <div class="timeline-content">${ev.content}</div>
+            ${galleryHTML}
+            ${feelingsHTML}
+            <div class="timeline-actions">
+                <button class="btn-action btn-edit" onclick="editEvent('${ev.key}')" title="Sửa hoặc thêm cảm nghĩ">✏️ Sửa</button>
+                <button class="btn-action btn-delete" onclick="deleteEvent('${ev.key}')" title="Xóa kỷ niệm">🗑️ Xóa</button>
+            </div>
+        `;
+        timeline.appendChild(item);
+    });
+}
+
+// ----------------------------------------------------
+// LOGIC CÀI ĐẶT (SETTINGS MODAL)
+// ----------------------------------------------------
+const settingsModal = document.getElementById('settingsModal');
+const settingsForm = document.getElementById('settingsForm');
+
+document.getElementById('openSettingsBtn').addEventListener('click', () => {
+    // Đổ dữ liệu hiện tại vào form cài đặt
+    document.getElementById('nicknameDuy').value = nicknameDuy;
+    document.getElementById('nicknameChi').value = nicknameChi;
+    settingsModal.classList.add('active');
+});
+
+document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+    settingsModal.classList.remove('active');
+});
+
+settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) settingsModal.classList.remove('active');
+});
+
+settingsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('saveSettingsBtn');
+    btn.innerText = 'Đang lưu...';
+
+    const nDuy = document.getElementById('nicknameDuy').value.trim();
+    const nChi = document.getElementById('nicknameChi').value.trim();
+
+    try {
+        await update(ref(db, 'loveSettings_BiMat123'), {
+            nicknames: {
+                duy: nDuy,
+                chi: nChi
+            }
+        });
+        settingsModal.classList.remove('active');
+    } catch (error) {
+        alert("Lỗi khi lưu cài đặt: " + error.message);
+    } finally {
+        btn.innerText = 'Lưu Cài Đặt 💾';
+    }
+});
+
+
+// ----------------------------------------------------
+// LOGIC FORM SỰ KIỆN VÀ SLIDER
+// ----------------------------------------------------
 window.formatDoc = function(cmd, value = null) {
     document.execCommand(cmd, false, value);
     contentInput.focus();
 };
 
-// Bật Menu Form Đăng Ký
 document.getElementById('openFormBtn').addEventListener('click', () => {
     editingKey = null;
     eventForm.reset();
@@ -99,90 +255,10 @@ document.getElementById('closeFormBtn').addEventListener('click', () => {
     formModal.classList.remove('active');
 });
 
-// Lắng nghe dữ liệu Realtime
-// Lắng nghe dữ liệu Realtime
-onValue(eventsRef, (snapshot) => {
-    const data = snapshot.val();
-    timeline.innerHTML = '';
-
-    if (data) {
-        window.loveEventsList = Object.entries(data).map(([key, value]) => ({
-            key,
-            ...value
-        }));
-        
-        window.loveEventsList.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        window.loveEventsList.forEach((ev, index) => {
-            const item = document.createElement('div');
-            
-            // ==========================================
-            // KIỂM TRA TRẠNG THÁI CẢM NGHĨ (THÊM VIỀN ĐỎ/XANH)
-            // ==========================================
-            const hasChiFeeling = ev.feelingChi && ev.feelingChi.trim() !== '';
-            const hasDuyFeeling = ev.feelingDuy && ev.feelingDuy.trim() !== '';
-            
-            // Mặc định class là timeline-item
-            let itemClasses = 'timeline-item';
-            
-            // Nếu cả 2 đều đã viết cảm nghĩ -> Viền Xanh
-            if (hasChiFeeling && hasDuyFeeling) {
-                itemClasses += ' complete-feelings';
-            } 
-            // Nếu 1 trong 2 (hoặc cả 2) chưa viết cảm nghĩ -> Viền Đỏ
-            else {
-                itemClasses += ' incomplete-feelings';
-            }
-            
-            // Gán class cho phần tử
-            item.className = itemClasses;
-            // ==========================================
-
-            const dateObj = new Date(ev.date);
-            const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            
-            let galleryHTML = '';
-            let photoIcon = '';
-            if (ev.images && ev.images.length > 0) {
-                photoIcon = '📸';
-                galleryHTML = '<div class="timeline-gallery">';
-                ev.images.forEach((imgUrl, imgIndex) => {
-                    galleryHTML += `<img src="${imgUrl}" alt="Thumbnail" onclick="openSlider(${index}, ${imgIndex})" onerror="this.style.display='none'">`;
-                });
-                galleryHTML += '</div>';
-            }
-
-            let feelingsHTML = '';
-            if (hasChiFeeling || hasDuyFeeling) {
-                feelingsHTML += '<div class="feelings-container">';
-                if (hasChiFeeling) {
-                    feelingsHTML += `<div class="feeling-box feeling-chi"><span class="feeling-author">👩 Chi:</span>${ev.feelingChi}</div>`;
-                }
-                if (hasDuyFeeling) {
-                    feelingsHTML += `<div class="feeling-box feeling-duy"><span class="feeling-author">👦 Duy:</span>${ev.feelingDuy}</div>`;
-                }
-                feelingsHTML += '</div>';
-            }
-
-            item.innerHTML = `
-                <div class="timeline-date">${dateStr}</div>
-                <div class="timeline-title" onclick="openSlider(${index}, 0)">${ev.title} ${photoIcon}</div>
-                <div class="timeline-content">${ev.content}</div>
-                ${galleryHTML}
-                ${feelingsHTML}
-                <div class="timeline-actions">
-                    <button class="btn-action btn-edit" onclick="editEvent('${ev.key}')" title="Sửa hoặc thêm cảm nghĩ">✏️ Sửa</button>
-                    <button class="btn-action btn-delete" onclick="deleteEvent('${ev.key}')" title="Xóa kỷ niệm">🗑️ Xóa</button>
-                </div>
-            `;
-            timeline.appendChild(item);
-        });
-    } else {
-        timeline.innerHTML = '<p style="text-align:center; color:#888;">Chưa có kỷ niệm nào. Hãy tạo kỷ niệm đầu tiên nhé!</p>';
-    }
+formModal.addEventListener('click', (e) => {
+    if (e.target === formModal) formModal.classList.remove('active');
 });
 
-// Kích hoạt chế độ Chỉnh sửa
 window.editEvent = function(key) {
     const ev = window.loveEventsList.find(item => item.key === key);
     if (!ev) return;
@@ -205,7 +281,6 @@ window.editEvent = function(key) {
     formModal.classList.add('active');
 };
 
-// Xóa kỷ niệm
 window.deleteEvent = async function(key) {
     if (confirm("Bạn có chắc chắn muốn xóa kỷ niệm này không? 🥺")) {
         try {
@@ -218,7 +293,6 @@ window.deleteEvent = async function(key) {
     }
 };
 
-// Gửi dữ liệu (Thêm mới hoặc Cập nhật)
 eventForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -264,7 +338,6 @@ eventForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Modal Slider Ảnh 
 const sliderModal = document.getElementById('sliderModal');
 const closeSliderBtn = document.getElementById('closeSliderBtn');
 const swiperWrapper = document.getElementById('swiperWrapper');
