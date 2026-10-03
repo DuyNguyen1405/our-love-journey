@@ -444,3 +444,13 @@ closeSliderBtn.addEventListener('click', () => sliderModal.classList.remove('act
 sliderModal.addEventListener('click', (e) => {
     if (e.target === sliderModal) sliderModal.classList.remove('active');
 });
+
+const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+if (scrollToTopBtn) {
+    scrollToTopBtn.addEventListener('click', () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+}
