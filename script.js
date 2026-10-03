@@ -454,3 +454,23 @@ if (scrollToTopBtn) {
         });
     });
 }
+
+const randomMemoryBtn = document.getElementById('randomMemoryBtn');
+if (randomMemoryBtn) {
+    randomMemoryBtn.addEventListener('click', () => {
+        const items = document.querySelectorAll('#timeline .timeline-item');
+        if (!items || items.length === 0) {
+            alert('Chưa có kỷ niệm nào để xem ngẫu nhiên!');
+            return;
+        }
+
+        const randomIndex = Math.floor(Math.random() * items.length);
+        const selectedItem = items[randomIndex];
+
+        selectedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        selectedItem.classList.remove('highlight-memory');
+        void selectedItem.offsetWidth; // Trigger reflow để kích hoạt lại animation
+        selectedItem.classList.add('highlight-memory');
+    });
+}
