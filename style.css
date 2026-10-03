@@ -89,24 +89,6 @@ body {
     transform: translateY(-2px);
 }
 
-.btn-random {
-    background-color: #fff0f3;
-    color: var(--primary-color);
-    border: 1px solid #ffccd5;
-    padding: 10px 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.95rem;
-    transition: 0.3s;
-    box-shadow: 0 4px 6px rgba(255, 107, 129, 0.1);
-}
-
-.btn-random:hover {
-    background-color: #ffccd5;
-    transform: translateY(-2px);
-}
-
 /* Form Modal (Submenu ẩn) */
 .form-modal {
     display: none;
@@ -249,16 +231,6 @@ body {
     border-color: #dc143c; 
     /* Tăng độ đậm bóng đổ (Shadow) */
     box-shadow: 0 5px 15px rgba(220, 20, 60, 0.4);
-}
-
-/* Hiệu ứng làm nổi bật kỷ niệm khi ngẫu nhiên cuộn tới */
-@keyframes highlightFlash {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.03); box-shadow: 0 0 25px rgba(255, 107, 129, 0.7); }
-}
-
-.timeline-item.highlight-memory {
-    animation: highlightFlash 1.2s ease;
 }
 
 .timeline-date { color: var(--primary-color); font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; }
