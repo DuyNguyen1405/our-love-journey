@@ -110,6 +110,22 @@ onValue(eventsRef, (snapshot) => {
     renderTimeline(); // Vẽ lại timeline với sự kiện mới
 });
 
+const GOODNIGHT_START = new Date(2026, 4, 17); // 17/5/2026, tính cả ngày này là ngày 1
+
+function parseLocalDate(dateStr) {
+    if (!dateStr) return null;
+    const [year, month, day] = dateStr.split('-').map(Number);
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day);
+}
+
+function getGoodnightWishDay(dateStr) {
+    const eventDate = parseLocalDate(dateStr);
+    if (!eventDate || eventDate < GOODNIGHT_START) return null;
+    const diffDays = Math.round((eventDate - GOODNIGHT_START) / (1000 * 60 * 60 * 24));
+    return diffDays + 1;
+}
+
 // 3. Hàm vẽ Timeline
 function renderTimeline() {
     timeline.innerHTML = '';
@@ -154,6 +170,12 @@ function renderTimeline() {
             galleryHTML += '</div>';
         }
 
+        let goodnightWishHTML = '';
+        const goodnightDay = getGoodnightWishDay(ev.date);
+        if (goodnightDay !== null) {
+            goodnightWishHTML = `<p class="goodnight-wish">Lời chúc ngủ ngon thứ ${goodnightDay}</p>`;
+        }
+
         let feelingsHTML = '';
         if (hasChiFeeling || hasDuyFeeling) {
             feelingsHTML += '<div class="feelings-container">';
@@ -176,6 +198,7 @@ function renderTimeline() {
             <div class="timeline-title" onclick="openSlider(${index}, 0)">${ev.title} ${photoIcon}</div>
             <div class="timeline-content">${ev.content}</div>
             ${galleryHTML}
+            ${goodnightWishHTML}
             ${feelingsHTML}
             <div class="timeline-actions">
                 <button class="btn-action btn-edit" onclick="editEvent('${ev.key}')" title="Sửa hoặc thêm cảm nghĩ">✏️ Sửa</button>
@@ -260,9 +283,49 @@ formModal.addEventListener('click', (e) => {
     if (e.target === formModal) formModal.classList.remove('active');
 });
 
-window.editEvent = function(key) {
+const confirmModal = document.getElementById('confirmModal');
+const confirmTitle = document.getElementById('confirmTitle');
+const confirmMessage = document.getElementById('confirmMessage');
+const confirmOkBtn = document.getElementById('confirmOkBtn');
+const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+let confirmResolver = null;
+
+function closeConfirmModal(result) {
+    confirmModal.classList.remove('active');
+    if (confirmResolver) {
+        const resolve = confirmResolver;
+        confirmResolver = null;
+        resolve(result);
+    }
+}
+
+function askConfirm({ title, message, okText, danger = false }) {
+    confirmTitle.innerText = title;
+    confirmMessage.innerText = message;
+    confirmOkBtn.innerText = okText;
+    confirmOkBtn.classList.toggle('danger', danger);
+    confirmModal.classList.add('active');
+    return new Promise((resolve) => {
+        confirmResolver = resolve;
+    });
+}
+
+confirmCancelBtn.addEventListener('click', () => closeConfirmModal(false));
+confirmOkBtn.addEventListener('click', () => closeConfirmModal(true));
+confirmModal.addEventListener('click', (e) => {
+    if (e.target === confirmModal) closeConfirmModal(false);
+});
+
+window.editEvent = async function(key) {
     const ev = window.loveEventsList.find(item => item.key === key);
     if (!ev) return;
+
+    const confirmed = await askConfirm({
+        title: 'Sửa kỷ niệm ✏️',
+        message: `Bạn có muốn sửa kỷ niệm "${ev.title || ''}" không?`,
+        okText: 'Sửa'
+    });
+    if (!confirmed) return;
 
     editingKey = key;
 
@@ -283,14 +346,22 @@ window.editEvent = function(key) {
 };
 
 window.deleteEvent = async function(key) {
-    if (confirm("Bạn có chắc chắn muốn xóa kỷ niệm này không? 🥺")) {
-        try {
-            const itemRef = ref(db, `loveEvents_BiMat123/${key}`);
-            await remove(itemRef);
-            if (editingKey === key) formModal.classList.remove('active');
-        } catch (error) {
-            alert("Lỗi khi xóa: " + error.message);
-        }
+    const ev = window.loveEventsList.find(item => item.key === key);
+    const title = ev?.title ? `"${ev.title}"` : 'kỷ niệm này';
+    const confirmed = await askConfirm({
+        title: 'Xóa kỷ niệm 🗑️',
+        message: `Bạn có chắc chắn muốn xóa ${title} không? Hành động này không thể hoàn tác.`,
+        okText: 'Xóa',
+        danger: true
+    });
+    if (!confirmed) return;
+
+    try {
+        const itemRef = ref(db, `loveEvents_BiMat123/${key}`);
+        await remove(itemRef);
+        if (editingKey === key) formModal.classList.remove('active');
+    } catch (error) {
+        alert("Lỗi khi xóa: " + error.message);
     }
 };
 
