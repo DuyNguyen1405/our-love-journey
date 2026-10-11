@@ -225,6 +225,31 @@ body {
     background: var(--bg-color); border-radius: 50%; font-size: 1.2rem;
 }
 
+/* Khung text Lời chúc ngủ ngon hôm nay */
+.timeline-item.today-box {
+    background-color: #f0f8ff; /* Xanh nước biển nhạt */
+    border-color: #1e90ff; /* Viền xanh DodgerBlue */
+    box-shadow: 0 5px 15px rgba(30, 144, 255, 0.4);
+    padding-bottom: 20px; /* Bớt padding-bottom vì không có nút action */
+    text-align: center;
+}
+
+.timeline-item.today-box::before {
+    content: '🌙'; /* Biểu tượng mặt trăng thay cho trái tim */
+    background: #f0f8ff;
+}
+
+.today-box .timeline-date {
+    color: #0056b3;
+    font-size: 1.05rem;
+}
+
+.today-box .goodnight-wish {
+    color: #1e90ff;
+    font-size: 1.8rem;
+    margin-top: 5px;
+}
+
 /* ========================================= */
 /* CSS CHO VIỀN TRẠNG THÁI (ĐỦ/THIẾU CẢM NGHĨ) */
 /* ========================================= */
@@ -506,11 +531,18 @@ body {
     transform: translateY(-2px);
 }
 
-/* Nút cuộn lên đầu trang */
-.scroll-to-top {
+/* Nút cuộn trang */
+.scroll-buttons {
     position: fixed;
     bottom: 25px;
     left: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 99;
+}
+
+.scroll-btn {
     width: 45px;
     height: 45px;
     border-radius: 50%;
@@ -523,17 +555,16 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 99;
     transition: transform 0.2s, background-color 0.3s, box-shadow 0.3s;
 }
 
-.scroll-to-top:hover {
+.scroll-btn:hover {
     background-color: #ff4760;
     transform: translateY(-3px) scale(1.05);
     box-shadow: 0 6px 16px rgba(255, 107, 129, 0.5);
 }
 
-.scroll-to-top:active {
+.scroll-btn:active {
     transform: translateY(0) scale(0.95);
 }
 

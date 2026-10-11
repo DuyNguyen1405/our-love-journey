@@ -23,7 +23,8 @@ window.loveEventsList = [];
 let currentEventsData = null; // Chứa dữ liệu thô của sự kiện
 let nicknameDuy = ''; // Biệt danh Duy
 let nicknameChi = ''; // Biệt danh Chi
-let settingsNote = ''; // Ghi chú chung
+let noteDuy = ''; // Ghi chú riêng Duy
+let noteChi = ''; // Ghi chú riêng Chi
 
 let swiperInstance = null;
 let editingKey = null;
@@ -92,7 +93,10 @@ onValue(settingsRef, (snapshot) => {
     const nicknames = data?.nicknames || {};
     nicknameDuy = nicknames.duy || '';
     nicknameChi = nicknames.chi || '';
-    settingsNote = data?.note || '';
+    
+    const notes = data?.notes || {};
+    noteDuy = notes.duy || '';
+    noteChi = notes.chi || '';
     
     // Cập nhật lại lời chào nếu đổi biệt danh ngay lúc đang online
     if (currentUser) {
@@ -207,6 +211,22 @@ function renderTimeline() {
         `;
         timeline.appendChild(item);
     });
+
+    // Thêm khung Lời chúc ngủ ngon hôm nay
+    const today = new Date();
+    const todayYMD = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const currentGoodnightDay = getGoodnightWishDay(todayYMD);
+
+    if (currentGoodnightDay !== null) {
+        const todayStrVN = today.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const todayItem = document.createElement('div');
+        todayItem.className = 'timeline-item today-box';
+        todayItem.innerHTML = `
+            <div class="timeline-date">Hôm nay, ngày ${todayStrVN}</div>
+            <p class="goodnight-wish">Lời chúc ngủ ngon thứ ${currentGoodnightDay}</p>
+        `;
+        timeline.appendChild(todayItem);
+    }
 }
 
 // ----------------------------------------------------
@@ -219,7 +239,16 @@ document.getElementById('openSettingsBtn').addEventListener('click', () => {
     // Đổ dữ liệu hiện tại vào form cài đặt
     document.getElementById('nicknameDuy').value = nicknameDuy;
     document.getElementById('nicknameChi').value = nicknameChi;
-    document.getElementById('settingsNote').value = settingsNote;
+    
+    // Hiển thị ghi chú cá nhân theo người đang đăng nhập
+    const currentNote = (currentUser === 'Duy') ? noteDuy : noteChi;
+    document.getElementById('settingsNote').value = currentNote;
+    
+    const label = document.getElementById('settingsNoteLabel');
+    if (label) {
+        label.innerText = `Ghi chú cá nhân của ${currentUser} 🔒`;
+    }
+
     settingsModal.classList.add('active');
 });
 
@@ -238,16 +267,23 @@ settingsForm.addEventListener('submit', async (e) => {
 
     const nDuy = document.getElementById('nicknameDuy').value.trim();
     const nChi = document.getElementById('nicknameChi').value.trim();
-    const note = document.getElementById('settingsNote').value.trim();
+    const myNote = document.getElementById('settingsNote').value.trim();
+
+    const updates = {
+        nicknames: {
+            duy: nDuy,
+            chi: nChi
+        }
+    };
+
+    if (currentUser === 'Duy') {
+        updates['notes/duy'] = myNote;
+    } else if (currentUser === 'Chi') {
+        updates['notes/chi'] = myNote;
+    }
 
     try {
-        await update(ref(db, 'loveSettings_BiMat123'), {
-            nicknames: {
-                duy: nDuy,
-                chi: nChi
-            },
-            note
-        });
+        await update(ref(db, 'loveSettings_BiMat123'), updates);
         settingsModal.classList.remove('active');
     } catch (error) {
         alert("Lỗi khi lưu cài đặt: " + error.message);
@@ -450,6 +486,16 @@ if (scrollToTopBtn) {
     scrollToTopBtn.addEventListener('click', () => {
         window.scrollTo({
             top: 0,
+            behavior: 'smooth'
+        });
+    });
+}
+
+const scrollToBottomBtn = document.getElementById('scrollToBottomBtn');
+if (scrollToBottomBtn) {
+    scrollToBottomBtn.addEventListener('click', () => {
+        window.scrollTo({
+            top: document.body.scrollHeight,
             behavior: 'smooth'
         });
     });

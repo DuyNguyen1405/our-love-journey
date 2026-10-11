@@ -54,8 +54,8 @@
                         <input type="text" id="nicknameChi" placeholder="Ví dụ: Vợ yêu, Bé mèo...">
                     </div>
                     <div style="margin-bottom: 25px;">
-                        <label for="settingsNote" style="font-weight: 600; color: var(--primary-color); display: block; margin-bottom: 5px;">Ghi chú 📝</label>
-                        <textarea id="settingsNote" rows="4" placeholder="Ghi lại những điều muốn nhớ..."></textarea>
+                        <label id="settingsNoteLabel" for="settingsNote" style="font-weight: 600; color: var(--primary-color); display: block; margin-bottom: 5px;">Ghi chú cá nhân 🔒</label>
+                        <textarea id="settingsNote" rows="4" placeholder="Ghi lại những điều chỉ mình bạn thấy..."></textarea>
                     </div>
                     
                     <button type="submit" class="btn-submit" id="saveSettingsBtn">Lưu Cài Đặt 💾</button>
@@ -137,8 +137,11 @@
             </div>
         </div>
 
-        <!-- Nút cuộn lên đầu trang -->
-        <button id="scrollToTopBtn" class="scroll-to-top" title="Lên đầu trang" aria-label="Lên đầu trang">⬆️</button>
+        <!-- Nút cuộn trang -->
+        <div class="scroll-buttons">
+            <button id="scrollToTopBtn" class="scroll-btn scroll-to-top" title="Lên đầu trang" aria-label="Lên đầu trang">⬆️</button>
+            <button id="scrollToBottomBtn" class="scroll-btn scroll-to-bottom" title="Xuống cuối trang" aria-label="Xuống cuối trang">⬇️</button>
+        </div>
 
     </div>
 
