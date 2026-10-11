@@ -128,7 +128,7 @@ body {
     box-shadow: 0 10px 20px rgba(0,0,0,0.2);
     width: 90%;
     max-width: 600px;
-    max-height: 90vh;
+    max-height: 100vh;
     overflow-y: auto;
     position: relative;
 }
