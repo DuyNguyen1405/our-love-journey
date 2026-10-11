@@ -159,6 +159,7 @@ function renderTimeline() {
             itemClasses += ' incomplete-feelings';
         }
         item.className = itemClasses;
+        item.id = `event-${ev.key}`;
 
         const dateObj = new Date(ev.date);
         const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -219,10 +220,26 @@ function renderTimeline() {
 
     if (currentGoodnightDay !== null) {
         const todayStrVN = today.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        
+        let randomMemoryHTML = '';
+        if (window.loveEventsList && window.loveEventsList.length > 0) {
+            const randomIndex = Math.floor(Math.random() * window.loveEventsList.length);
+            const randomEv = window.loveEventsList[randomIndex];
+            const evDate = parseLocalDate(randomEv.date);
+            if (evDate) {
+                const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                const diffDays = Math.round((todayMidnight - evDate) / (1000 * 60 * 60 * 24));
+                const originalTitle = randomEv.title || '';
+                const evDateStr = evDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                randomMemoryHTML = `<div style="color: #0056b3; font-size: 0.95rem; margin-top: 5px; font-style: italic;">Đã ${diffDays} ngày trôi qua kể từ <a href="#event-${randomEv.key}" style="color: #0056b3; font-weight: 600; text-decoration: underline; transition: opacity 0.2s;" onmouseover="this.style.opacity=0.7" onmouseout="this.style.opacity=1">${originalTitle} (${evDateStr})</a></div>`;
+            }
+        }
+
         const todayItem = document.createElement('div');
         todayItem.className = 'timeline-item today-box';
         todayItem.innerHTML = `
             <div class="timeline-date">Hôm nay, ngày ${todayStrVN}</div>
+            ${randomMemoryHTML}
             <p class="goodnight-wish">Lời chúc ngủ ngon thứ ${currentGoodnightDay}</p>
         `;
         timeline.appendChild(todayItem);
