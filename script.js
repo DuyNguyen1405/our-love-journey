@@ -17,9 +17,11 @@ const db = getDatabase(app);
 // Các bảng dữ liệu trên Firebase
 const eventsRef = ref(db, 'loveEvents_BiMat123'); 
 const settingsRef = ref(db, 'loveSettings_BiMat123'); // Cài đặt: biệt danh + ghi chú
+const todosRef = ref(db, 'loveTodos_BiMat123'); // Todo List
 
 // Biến lưu trữ toàn cục
 window.loveEventsList = [];
+window.loveTodosList = [];
 let currentEventsData = null; // Chứa dữ liệu thô của sự kiện
 let nicknameDuy = ''; // Biệt danh Duy
 let nicknameChi = ''; // Biệt danh Chi
@@ -112,6 +114,13 @@ onValue(settingsRef, (snapshot) => {
 onValue(eventsRef, (snapshot) => {
     currentEventsData = snapshot.val();
     renderTimeline(); // Vẽ lại timeline với sự kiện mới
+});
+
+// 2.5 Lắng nghe Todo List
+onValue(todosRef, (snapshot) => {
+    const data = snapshot.val();
+    window.loveTodosList = data ? Object.entries(data).map(([key, value]) => ({ key, ...value })) : [];
+    renderTodos();
 });
 
 const GOODNIGHT_START = new Date(2026, 4, 17); // 17/5/2026, tính cả ngày này là ngày 1
@@ -535,5 +544,170 @@ if (randomMemoryBtn) {
         selectedItem.classList.remove('highlight-memory');
         void selectedItem.offsetWidth; // Trigger reflow để kích hoạt lại animation
         selectedItem.classList.add('highlight-memory');
+    });
+}
+
+// ----------------------------------------------------
+// LOGIC TODO LIST
+// ----------------------------------------------------
+const tabListBtn = document.getElementById('tabListBtn');
+const tabDetailBtn = document.getElementById('tabDetailBtn');
+const tabListContent = document.getElementById('tabListContent');
+const tabDetailContent = document.getElementById('tabDetailContent');
+
+const activeTasksContainer = document.getElementById('activeTasks');
+const completedTasksContainer = document.getElementById('completedTasks');
+
+const todoForm = document.getElementById('todoForm');
+const taskIdInput = document.getElementById('taskIdInput');
+const taskNameInput = document.getElementById('taskNameInput');
+const taskTimeInput = document.getElementById('taskTimeInput');
+const taskContentInput = document.getElementById('taskContentInput');
+
+const addNewTaskBtn = document.getElementById('addNewTaskBtn');
+const cancelTaskBtn = document.getElementById('cancelTaskBtn');
+const deleteTaskBtn = document.getElementById('deleteTaskBtn');
+
+function switchTodoTab(tab) {
+    if (tab === 'list') {
+        tabListBtn.classList.add('active');
+        tabDetailBtn.classList.remove('active');
+        tabListContent.classList.add('active');
+        tabDetailContent.classList.remove('active');
+    } else {
+        tabDetailBtn.classList.add('active');
+        tabListBtn.classList.remove('active');
+        tabDetailContent.classList.add('active');
+        tabListContent.classList.remove('active');
+    }
+}
+
+if(tabListBtn) tabListBtn.addEventListener('click', () => switchTodoTab('list'));
+if(tabDetailBtn) tabDetailBtn.addEventListener('click', () => switchTodoTab('detail'));
+
+if(addNewTaskBtn) {
+    addNewTaskBtn.addEventListener('click', () => {
+        todoForm.reset();
+        taskIdInput.value = '';
+        deleteTaskBtn.style.display = 'none';
+        switchTodoTab('detail');
+    });
+}
+
+if(cancelTaskBtn) {
+    cancelTaskBtn.addEventListener('click', () => {
+        switchTodoTab('list');
+    });
+}
+
+function renderTodos() {
+    if(!activeTasksContainer || !completedTasksContainer) return;
+
+    activeTasksContainer.innerHTML = '';
+    completedTasksContainer.innerHTML = '';
+    
+    let hasActive = false;
+    let hasCompleted = false;
+
+    // Sắp xếp theo ngày (tăng dần)
+    window.loveTodosList.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+    window.loveTodosList.forEach(task => {
+        const timeObj = new Date(task.time);
+        const timeStr = isNaN(timeObj) ? task.time : timeObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        
+        const itemHtml = `
+            <div class="todo-item">
+                <input type="checkbox" onchange="toggleTodoStatus('${task.key}', this.checked)" ${task.isCompleted ? 'checked' : ''}>
+                <a href="#" onclick="editTodo('${task.key}'); return false;">
+                    ${task.name} <span class="todo-date">(${timeStr})</span>
+                </a>
+            </div>
+        `;
+
+        if (task.isCompleted) {
+            completedTasksContainer.innerHTML += itemHtml;
+            hasCompleted = true;
+        } else {
+            activeTasksContainer.innerHTML += itemHtml;
+            hasActive = true;
+        }
+    });
+
+    if (!hasActive) activeTasksContainer.innerHTML = '<p style="color:#aaa; font-size:0.85rem; font-style:italic;">Không có task nào đang tiến hành.</p>';
+    if (!hasCompleted) completedTasksContainer.innerHTML = '<p style="color:#aaa; font-size:0.85rem; font-style:italic;">Chưa có task nào hoàn thành.</p>';
+}
+
+window.toggleTodoStatus = async function(key, isCompleted) {
+    try {
+        await update(ref(db, `loveTodos_BiMat123/${key}`), { isCompleted });
+    } catch (e) {
+        alert('Lỗi: ' + e.message);
+    }
+};
+
+window.editTodo = function(key) {
+    const task = window.loveTodosList.find(t => t.key === key);
+    if (!task) return;
+    
+    taskIdInput.value = task.key;
+    taskNameInput.value = task.name || '';
+    taskTimeInput.value = task.time || '';
+    taskContentInput.value = task.content || '';
+    
+    deleteTaskBtn.style.display = 'block';
+    switchTodoTab('detail');
+};
+
+if(todoForm) {
+    todoForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('saveTaskBtn');
+        const oldText = btn.innerText;
+        btn.innerText = 'Đang lưu...';
+        
+        const key = taskIdInput.value;
+        const taskData = {
+            name: taskNameInput.value.trim(),
+            time: taskTimeInput.value,
+            content: taskContentInput.value.trim()
+        };
+
+        try {
+            if (key) {
+                await update(ref(db, `loveTodos_BiMat123/${key}`), taskData);
+            } else {
+                taskData.isCompleted = false;
+                await push(todosRef, taskData);
+            }
+            switchTodoTab('list');
+        } catch (error) {
+            alert('Lỗi lưu task: ' + error.message);
+        } finally {
+            btn.innerText = oldText;
+        }
+    });
+}
+
+if(deleteTaskBtn) {
+    deleteTaskBtn.addEventListener('click', async () => {
+        const key = taskIdInput.value;
+        if (!key) return;
+        
+        const confirmed = await askConfirm({
+            title: 'Xóa Task',
+            message: 'Bạn có chắc chắn muốn xóa task này?',
+            okText: 'Xóa',
+            danger: true
+        });
+        
+        if (confirmed) {
+            try {
+                await remove(ref(db, `loveTodos_BiMat123/${key}`));
+                switchTodoTab('list');
+            } catch (e) {
+                alert('Lỗi xóa task: ' + e.message);
+            }
+        }
     });
 }

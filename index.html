@@ -119,9 +119,73 @@
             </div>
         </div>
 
-        <!-- Nơi hiển thị Timeline -->
-        <div class="timeline" id="timeline">
-            <p style="text-align:center; color:#888;">Đang tải kỷ niệm của chúng mình...</p>
+        <!-- Nơi hiển thị Layout Chính (Todo List + Timeline) -->
+        <div class="content-wrapper">
+            
+            <!-- Nơi hiển thị Timeline -->
+            <div class="timeline-container">
+                <h2 class="timeline-header">Love Events 🌹</h2>
+                <div class="timeline" id="timeline">
+                    <p style="text-align:center; color:#888;">Đang tải kỷ niệm của chúng mình...</p>
+                </div>
+            </div>
+
+            <!-- Sidebar Todo List -->
+            <div class="todo-sidebar">
+                <div class="todo-widget">
+                    <h2 class="todo-header">Love Plans 📝</h2>
+                    <div class="todo-tabs">
+                        <button class="todo-tab active" id="tabListBtn">Danh sách</button>
+                        <button class="todo-tab" id="tabDetailBtn">Chi tiết</button>
+                    </div>
+                    
+                    <!-- TAB DANH SÁCH -->
+                    <div class="todo-content active" id="tabListContent">
+                        <div class="todo-section">
+                            <h4>Đang tiến hành ⏳</h4>
+                            <div class="todo-list" id="activeTasks">
+                                <!-- Render tasks here -->
+                            </div>
+                        </div>
+                        <div class="todo-section">
+                            <h4>Đã hoàn thành ✅</h4>
+                            <div class="todo-list completed-list" id="completedTasks">
+                                <!-- Render tasks here -->
+                            </div>
+                        </div>
+                        <button class="btn-submit" style="margin-top: 15px; font-size: 0.95rem; padding: 10px;" id="addNewTaskBtn">➕ Thêm Task Mới</button>
+                    </div>
+                    
+                    <!-- TAB CHI TIẾT -->
+                    <div class="todo-content" id="tabDetailContent">
+                        <form id="todoForm">
+                            <input type="hidden" id="taskIdInput">
+                            
+                            <div class="input-group">
+                                <label for="taskNameInput">Tên Task:</label>
+                                <input type="text" id="taskNameInput" required placeholder="Ví dụ: Đi xem phim...">
+                            </div>
+                            
+                            <div class="input-group">
+                                <label for="taskTimeInput">Thời gian thực hiện:</label>
+                                <input type="date" id="taskTimeInput" required>
+                            </div>
+                            
+                            <div class="input-group">
+                                <label for="taskContentInput">Nội dung chi tiết:</label>
+                                <textarea id="taskContentInput" rows="3" placeholder="Ghi chú chi tiết cho task..."></textarea>
+                            </div>
+                            
+                            <div class="confirm-actions" style="margin-top: 15px;">
+                                <button type="button" class="btn-confirm-cancel" id="cancelTaskBtn">Hủy</button>
+                                <button type="submit" class="btn-confirm-ok" id="saveTaskBtn">Lưu</button>
+                            </div>
+                            <button type="button" class="btn-confirm-ok danger" style="width: 100%; margin-top: 10px; display: none;" id="deleteTaskBtn">🗑️ Xóa Task</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- Modal Slider Ảnh -->
