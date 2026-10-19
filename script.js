@@ -856,6 +856,7 @@ const todoForm = document.getElementById('todoForm');
 const taskIdInput = document.getElementById('taskIdInput');
 const taskNameInput = document.getElementById('taskNameInput');
 const taskTimeInput = document.getElementById('taskTimeInput');
+const clearTaskTimeBtn = document.getElementById('clearTaskTimeBtn');
 const taskContentInput = document.getElementById('taskContentInput');
 
 const addNewTaskBtn = document.getElementById('addNewTaskBtn');
@@ -891,6 +892,12 @@ if(addNewTaskBtn) {
 if(cancelTaskBtn) {
     cancelTaskBtn.addEventListener('click', () => {
         switchTodoTab('list');
+    });
+}
+
+if (clearTaskTimeBtn && taskTimeInput) {
+    clearTaskTimeBtn.addEventListener('click', () => {
+        taskTimeInput.value = '';
     });
 }
 

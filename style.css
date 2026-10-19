@@ -879,6 +879,36 @@ body {
     font-size: 0.9rem;
 }
 
+.date-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.date-input-group input[type="date"] {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+}
+
+.btn-clear-date {
+    background: #fff0f3;
+    border: 1px solid #ffccd5;
+    color: #e03131;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: 0.2s;
+}
+
+.btn-clear-date:hover {
+    background: #ffe3e3;
+}
+
 .todo-widget input[type="text"],
 .todo-widget input[type="date"],
 .todo-widget textarea {
