@@ -903,18 +903,27 @@ function renderTodos() {
     let hasActive = false;
     let hasCompleted = false;
 
-    // Sắp xếp theo ngày (tăng dần)
-    window.loveTodosList.sort((a, b) => new Date(a.time) - new Date(b.time));
+    // Sắp xếp theo ngày (tăng dần, task không có hạn xếp xuống cuối)
+    window.loveTodosList.sort((a, b) => {
+        if (!a.time && !b.time) return 0;
+        if (!a.time) return 1;
+        if (!b.time) return -1;
+        return new Date(a.time) - new Date(b.time);
+    });
 
     window.loveTodosList.forEach(task => {
-        const timeObj = new Date(task.time);
-        const timeStr = isNaN(timeObj) ? task.time : timeObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        let dateHtml = '';
+        if (task.time) {
+            const timeObj = new Date(task.time);
+            const timeStr = isNaN(timeObj) ? task.time : timeObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            dateHtml = ` <span class="todo-date">(${timeStr})</span>`;
+        }
         
         const itemHtml = `
             <div class="todo-item">
                 <input type="checkbox" onchange="toggleTodoStatus('${task.key}', this.checked)" ${task.isCompleted ? 'checked' : ''}>
                 <a href="#" onclick="editTodo('${task.key}'); return false;">
-                    ${task.name} <span class="todo-date">(${timeStr})</span>
+                    ${task.name}${dateHtml}
                 </a>
             </div>
         `;
