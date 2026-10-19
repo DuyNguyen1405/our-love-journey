@@ -52,10 +52,71 @@ const passcodeInput = document.getElementById('passcodeInput');
 const errorMessage = document.getElementById('errorMessage');
 const loginScreen = document.getElementById('loginScreen');
 const mainContent = document.getElementById('mainContent');
+const logoutBtn = document.getElementById('logoutBtn');
+
+function loginWithPin(val, isAutoLogin = false) {
+    if (val === '1405' || val === '1704') {
+        currentUser = (val === '1405') ? 'Duy' : 'Chi';
+
+        const lastLoginKey = `lastLogin_${currentUser}`;
+        const prevLogin = localStorage.getItem(lastLoginKey);
+        lastLoginTime = prevLogin ? parseInt(prevLogin, 10) : 0;
+        localStorage.setItem(lastLoginKey, Date.now().toString());
+        localStorage.setItem('savedUserPin', val);
+
+        signInAnonymously(auth).then(() => {
+            setupDatabaseListeners();
+
+            // Hiển thị lời chào có kèm biệt danh (nếu đã tải xong)
+            const currentNickname = (currentUser === 'Duy') ? nicknameDuy : nicknameChi;
+            const greetingName = currentNickname ? `${currentUser} (${currentNickname})` : currentUser;
+            if (userGreeting) {
+                userGreeting.innerText = `Chào ${greetingName} ❤️`;
+            }
+
+            if (isAutoLogin) {
+                loginScreen.style.display = 'none';
+                mainContent.style.display = 'block';
+            } else {
+                passcodeInput.disabled = true;
+                loginScreen.style.opacity = '0';
+
+                setTimeout(() => {
+                    loginScreen.style.display = 'none';
+                    mainContent.style.display = 'block';
+                }, 800);
+            }
+        }).catch((error) => {
+            console.error("Auth Error:", error);
+            localStorage.removeItem('savedUserPin');
+            loginScreen.style.display = 'flex';
+            loginScreen.style.opacity = '1';
+            mainContent.style.display = 'none';
+            errorMessage.innerText = "Lỗi xác thực: " + error.message;
+            errorMessage.classList.add('active');
+            if (passcodeInput) {
+                passcodeInput.disabled = false;
+                passcodeInput.value = '';
+            }
+        });
+    } else {
+        errorMessage.innerText = "Quên sinh nhật mình rồi à 🥺";
+        errorMessage.classList.add('active');
+        if (passcodeInput) {
+            passcodeInput.value = '';
+        }
+    }
+}
+
+const savedPin = localStorage.getItem('savedUserPin');
+if (savedPin === '1405' || savedPin === '1704') {
+    loginScreen.style.display = 'none';
+    loginWithPin(savedPin, true);
+} else if (passcodeInput) {
+    passcodeInput.focus();
+}
 
 if (passcodeInput && errorMessage && loginScreen && mainContent) {
-    passcodeInput.focus(); 
-
     passcodeInput.addEventListener('keyup', (e) => {
         let val = e.target.value;
         val = val.replace(/[^0-9]/g, '');
@@ -66,43 +127,15 @@ if (passcodeInput && errorMessage && loginScreen && mainContent) {
         }
 
         if (val.length === 4) {
-            if (val === '1405' || val === '1704') {
-                currentUser = (val === '1405') ? 'Duy' : 'Chi';
-
-                const lastLoginKey = `lastLogin_${currentUser}`;
-                const prevLogin = localStorage.getItem(lastLoginKey);
-                lastLoginTime = prevLogin ? parseInt(prevLogin, 10) : 0;
-                localStorage.setItem(lastLoginKey, Date.now().toString());
-                
-                signInAnonymously(auth).then(() => {
-                    setupDatabaseListeners();
-
-                    // Hiển thị lời chào có kèm biệt danh (nếu đã tải xong)
-                    const currentNickname = (currentUser === 'Duy') ? nicknameDuy : nicknameChi;
-                    const greetingName = currentNickname ? `${currentUser} (${currentNickname})` : currentUser;
-                    if(userGreeting) {
-                        userGreeting.innerText = `Chào ${greetingName} ❤️`;
-                    }
-
-                    passcodeInput.disabled = true;
-                    loginScreen.style.opacity = '0';
-                    
-                    setTimeout(() => {
-                        loginScreen.style.display = 'none';
-                        mainContent.style.display = 'block';
-                    }, 800);
-                }).catch((error) => {
-                    console.error("Auth Error:", error);
-                    errorMessage.innerText = "Lỗi xác thực: " + error.message;
-                    errorMessage.classList.add('active');
-                    passcodeInput.value = '';
-                });
-            } else {
-                errorMessage.innerText = "Quên sinh nhật mình rồi à 🥺";
-                errorMessage.classList.add('active');
-                passcodeInput.value = '';
-            }
+            loginWithPin(val, false);
         }
+    });
+}
+
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('savedUserPin');
+        window.location.reload();
     });
 }
 
