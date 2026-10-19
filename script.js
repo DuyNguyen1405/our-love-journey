@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, remove, update, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBxkDY6uEMMwZy8r29wyixjNbBBka5mQk0",
@@ -13,6 +14,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
 
 // Các bảng dữ liệu trên Firebase
 const eventsRef = ref(db, 'loveEvents_BiMat123'); 
@@ -21,12 +23,16 @@ const todosRef = ref(db, 'loveTodos_BiMat123'); // Todo List
 
 // Biến lưu trữ toàn cục
 window.loveEventsList = [];
+window.allLoveEventsList = [];
+window.allLoveTodosList = [];
 window.loveTodosList = [];
 let currentEventsData = null; // Chứa dữ liệu thô của sự kiện
 let nicknameDuy = ''; // Biệt danh Duy
 let nicknameChi = ''; // Biệt danh Chi
 let noteDuy = ''; // Ghi chú riêng Duy
 let noteChi = ''; // Ghi chú riêng Chi
+let lastLoginTime = 0; // Mốc đăng nhập lần trước để so sánh thông báo
+let newOrUpdatedEvents = [];
 
 let swiperInstance = null;
 let editingKey = null;
@@ -62,22 +68,37 @@ if (passcodeInput && errorMessage && loginScreen && mainContent) {
         if (val.length === 4) {
             if (val === '1405' || val === '1704') {
                 currentUser = (val === '1405') ? 'Duy' : 'Chi';
-                
-                // Hiển thị lời chào có kèm biệt danh (nếu đã tải xong)
-                const currentNickname = (currentUser === 'Duy') ? nicknameDuy : nicknameChi;
-                const greetingName = currentNickname ? `${currentUser} (${currentNickname})` : currentUser;
-                if(userGreeting) {
-                    userGreeting.innerText = `Chào ${greetingName} ❤️`;
-                }
 
-                passcodeInput.disabled = true;
-                loginScreen.style.opacity = '0';
+                const lastLoginKey = `lastLogin_${currentUser}`;
+                const prevLogin = localStorage.getItem(lastLoginKey);
+                lastLoginTime = prevLogin ? parseInt(prevLogin, 10) : 0;
+                localStorage.setItem(lastLoginKey, Date.now().toString());
                 
-                setTimeout(() => {
-                    loginScreen.style.display = 'none';
-                    mainContent.style.display = 'block';
-                }, 800);
+                signInAnonymously(auth).then(() => {
+                    setupDatabaseListeners();
+
+                    // Hiển thị lời chào có kèm biệt danh (nếu đã tải xong)
+                    const currentNickname = (currentUser === 'Duy') ? nicknameDuy : nicknameChi;
+                    const greetingName = currentNickname ? `${currentUser} (${currentNickname})` : currentUser;
+                    if(userGreeting) {
+                        userGreeting.innerText = `Chào ${greetingName} ❤️`;
+                    }
+
+                    passcodeInput.disabled = true;
+                    loginScreen.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        loginScreen.style.display = 'none';
+                        mainContent.style.display = 'block';
+                    }, 800);
+                }).catch((error) => {
+                    console.error("Auth Error:", error);
+                    errorMessage.innerText = "Lỗi xác thực: " + error.message;
+                    errorMessage.classList.add('active');
+                    passcodeInput.value = '';
+                });
             } else {
+                errorMessage.innerText = "Quên sinh nhật mình rồi à 🥺";
                 errorMessage.classList.add('active');
                 passcodeInput.value = '';
             }
@@ -89,39 +110,46 @@ if (passcodeInput && errorMessage && loginScreen && mainContent) {
 // ĐỒNG BỘ DỮ LIỆU TỪ FIREBASE VÀ RENDER TIMELINE
 // ----------------------------------------------------
 
-// 1. Lắng nghe thay đổi Cài đặt (Biệt danh + ghi chú)
-onValue(settingsRef, (snapshot) => {
-    const data = snapshot.val();
-    const nicknames = data?.nicknames || {};
-    nicknameDuy = nicknames.duy || '';
-    nicknameChi = nicknames.chi || '';
-    
-    const notes = data?.notes || {};
-    noteDuy = notes.duy || '';
-    noteChi = notes.chi || '';
-    
-    // Cập nhật lại lời chào nếu đổi biệt danh ngay lúc đang online
-    if (currentUser) {
-        const currentNickname = (currentUser === 'Duy') ? nicknameDuy : nicknameChi;
-        const greetingName = currentNickname ? `${currentUser} (${currentNickname})` : currentUser;
-        userGreeting.innerText = `Chào ${greetingName} ❤️`;
-    }
+window.setupDatabaseListeners = function() {
+    // 1. Lắng nghe thay đổi Cài đặt (Biệt danh + ghi chú)
+    onValue(settingsRef, (snapshot) => {
+        const data = snapshot.val();
+        const nicknames = data?.nicknames || {};
+        nicknameDuy = nicknames.duy || '';
+        nicknameChi = nicknames.chi || '';
+        
+        const notes = data?.notes || {};
+        noteDuy = notes.duy || '';
+        noteChi = notes.chi || '';
+        
+        // Cập nhật lại lời chào nếu đổi biệt danh ngay lúc đang online
+        if (currentUser) {
+            const currentNickname = (currentUser === 'Duy') ? nicknameDuy : nicknameChi;
+            const greetingName = currentNickname ? `${currentUser} (${currentNickname})` : currentUser;
+            if(userGreeting) {
+                userGreeting.innerText = `Chào ${greetingName} ❤️`;
+            }
+        }
 
-    renderTimeline(); // Vẽ lại timeline với biệt danh mới
-});
+        renderTimeline(); // Vẽ lại timeline với biệt danh mới
+    });
 
-// 2. Lắng nghe thay đổi Sự kiện
-onValue(eventsRef, (snapshot) => {
-    currentEventsData = snapshot.val();
-    renderTimeline(); // Vẽ lại timeline với sự kiện mới
-});
+    // 2. Lắng nghe thay đổi Sự kiện
+    onValue(eventsRef, (snapshot) => {
+        currentEventsData = snapshot.val();
+        renderTimeline(); // Vẽ lại timeline với sự kiện mới
+    });
 
-// 2.5 Lắng nghe Todo List
-onValue(todosRef, (snapshot) => {
-    const data = snapshot.val();
-    window.loveTodosList = data ? Object.entries(data).map(([key, value]) => ({ key, ...value })) : [];
-    renderTodos();
-});
+    // 2.5 Lắng nghe Todo List
+    onValue(todosRef, (snapshot) => {
+        const data = snapshot.val();
+        window.loveTodosList = data ? Object.entries(data).map(([key, value]) => ({ key, ...value })) : [];
+        window.allLoveTodosList = data ? Object.entries(data).map(([key, value]) => ({ key, ...value })) : [];
+        window.loveTodosList = window.allLoveTodosList.filter(t => !t.isDeleted);
+        renderTodos();
+        renderNotifications();
+    });
+};
 
 const GOODNIGHT_START = new Date(2026, 4, 17); // 17/5/2026, tính cả ngày này là ngày 1
 
@@ -145,16 +173,25 @@ function renderTimeline() {
 
     if (!currentEventsData) {
         timeline.innerHTML = '<p style="text-align:center; color:#888;">Chưa có kỷ niệm nào. Hãy tạo kỷ niệm đầu tiên nhé!</p>';
+        window.loveEventsList = [];
+        window.allLoveEventsList = [];
+        renderNotifications();
         return;
     }
 
-    window.loveEventsList = Object.entries(currentEventsData).map(([key, value]) => ({
+    const allEvents = Object.entries(currentEventsData).map(([key, value]) => ({
         key,
         ...value
     }));
-    
+    window.allLoveEventsList = allEvents;
+
+    // Chỉ hiển thị trên timeline những sự kiện chưa bị xóa
+    window.loveEventsList = allEvents.filter(ev => !ev.isDeleted);
     window.loveEventsList.sort((a, b) => new Date(a.date) - new Date(b.date));
 
+    if (window.loveEventsList.length === 0) {
+        timeline.innerHTML = '<p style="text-align:center; color:#888;">Chưa có kỷ niệm nào. Hãy tạo kỷ niệm đầu tiên nhé!</p>';
+    } else {
     window.loveEventsList.forEach((ev, index) => {
         const item = document.createElement('div');
         
@@ -253,7 +290,250 @@ function renderTimeline() {
         `;
         timeline.appendChild(todayItem);
     }
+    }
+
+    renderNotifications();
 }
+
+// ----------------------------------------------------
+// LOGIC THÔNG BÁO CẬP NHẬT (ICON HOA HỒNG 🌹)
+// ----------------------------------------------------
+const notifTrigger = document.getElementById('notifTrigger');
+const notifBadge = document.getElementById('notifBadge');
+const notifDropdown = document.getElementById('notifDropdown');
+const notifList = document.getElementById('notifList');
+const markAllReadBtn = document.getElementById('markAllReadBtn');
+
+function getReadNotificationIds() {
+    if (!currentUser) return [];
+    try {
+        const raw = localStorage.getItem(`readNotifs_${currentUser}`);
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function markNotificationAsRead(notifId) {
+    if (!currentUser || !notifId) return;
+    const list = getReadNotificationIds();
+    if (!list.includes(notifId)) {
+        list.push(notifId);
+        localStorage.setItem(`readNotifs_${currentUser}`, JSON.stringify(list));
+    }
+    renderNotifications();
+}
+
+function markAllNotificationsAsRead() {
+    if (!currentUser || !newOrUpdatedEvents || newOrUpdatedEvents.length === 0) return;
+    if (notifList && notifList.classList.contains('fade-out')) return;
+
+    if (notifList) {
+        notifList.classList.add('fade-out');
+    }
+
+    setTimeout(() => {
+        const list = getReadNotificationIds();
+        newOrUpdatedEvents.forEach(ev => {
+            const timeVal = ev.updatedAt || (ev.date ? new Date(ev.date).getTime() : 0);
+            const notifId = `${ev.key}_${timeVal}`;
+        newOrUpdatedEvents.forEach(item => {
+            const timeVal = item.updatedAt || (item.date ? new Date(item.date).getTime() : (item.time ? new Date(item.time).getTime() : 0));
+            const notifId = `${item.key}_${timeVal}`;
+            if (!list.includes(notifId)) {
+                list.push(notifId);
+            }
+        });
+        localStorage.setItem(`readNotifs_${currentUser}`, JSON.stringify(list));
+        renderNotifications();
+        if (notifList) {
+            notifList.classList.remove('fade-out');
+        }
+    }, 300);
+}
+
+function renderNotifications() {
+    if (!notifBadge || !notifList) return;
+
+    const readNotifIds = getReadNotificationIds();
+    const sourceEvents = window.allLoveEventsList || window.loveEventsList || [];
+    const sourceEvents = (window.allLoveEventsList || window.loveEventsList || []).map(ev => ({ ...ev, notifKind: 'event' }));
+    const sourceTodos = (window.allLoveTodosList || window.loveTodosList || []).map(td => ({ ...td, notifKind: 'todo' }));
+    const allSources = [...sourceEvents, ...sourceTodos];
+
+    // Chỉ lấy sự kiện thay đổi sau mốc đăng nhập trước VÀ do người còn lại thực hiện
+    newOrUpdatedEvents = sourceEvents.filter(ev => {
+        const eventTime = ev.updatedAt || (ev.date ? new Date(ev.date).getTime() : 0);
+        const notifId = `${ev.key}_${eventTime}`;
+    // Chỉ lấy sự kiện/task thay đổi sau mốc đăng nhập trước VÀ do người còn lại thực hiện
+    newOrUpdatedEvents = allSources.filter(item => {
+        const itemTime = item.updatedAt || (item.date ? new Date(item.date).getTime() : (item.time ? new Date(item.time).getTime() : 0));
+        const notifId = `${item.key}_${itemTime}`;
+        if (readNotifIds.includes(notifId)) return false;
+
+        const isAfterLastLogin = eventTime > lastLoginTime;
+        const isFromOtherUser = ev.updatedBy 
+            ? ev.updatedBy !== currentUser 
+            : (ev.createdBy ? ev.createdBy !== currentUser : true);
+        const isAfterLastLogin = itemTime > lastLoginTime;
+        const isFromOtherUser = item.updatedBy 
+            ? item.updatedBy !== currentUser 
+            : (item.createdBy ? item.createdBy !== currentUser : true);
+
+        return isAfterLastLogin && isFromOtherUser;
+    });
+
+    // Sắp xếp sự kiện mới nhất lên đầu
+    // Sắp xếp sự kiện/task mới nhất lên đầu
+    newOrUpdatedEvents.sort((a, b) => {
+        const timeA = a.updatedAt || (a.date ? new Date(a.date).getTime() : 0);
+        const timeB = b.updatedAt || (b.date ? new Date(b.date).getTime() : 0);
+        const timeA = a.updatedAt || (a.date ? new Date(a.date).getTime() : (a.time ? new Date(a.time).getTime() : 0));
+        const timeB = b.updatedAt || (b.date ? new Date(b.date).getTime() : (b.time ? new Date(b.time).getTime() : 0));
+        return timeB - timeA;
+    });
+
+    if (newOrUpdatedEvents.length > 0) {
+        if (markAllReadBtn) markAllReadBtn.style.display = 'inline-block';
+        notifBadge.innerText = newOrUpdatedEvents.length > 99 ? '99+' : newOrUpdatedEvents.length;
+        notifBadge.style.display = 'inline-block';
+
+        notifList.innerHTML = newOrUpdatedEvents.map(ev => {
+            const isDeletedEvent = Boolean(ev.isDeleted || ev.lastAction === 'delete_event');
+            const isDeletedFeeling = Boolean(ev.lastAction === 'delete_feeling');
+            const isDelete = isDeletedEvent || isDeletedFeeling;
+            const isNew = !isDelete && ev.createdAt && ev.createdAt > lastLoginTime;
+
+        notifList.innerHTML = newOrUpdatedEvents.map(item => {
+            let badgeTypeClass = 'notif-badge-edit';
+            let badgeTypeLabel = 'Cập nhật ✏️';
+
+            if (isDelete) {
+                badgeTypeClass = 'notif-badge-delete';
+                badgeTypeLabel = isDeletedFeeling ? 'Xóa bình luận 🗑️' : 'Xóa 🗑️';
+            } else if (isNew) {
+                badgeTypeClass = 'notif-badge-new';
+                badgeTypeLabel = 'Mới 💌';
+            if (item.notifKind === 'todo') {
+                const isDelete = Boolean(item.isDeleted || item.lastAction === 'delete_todo');
+                if (isDelete) {
+                    badgeTypeClass = 'notif-badge-delete';
+                    badgeTypeLabel = 'Xóa task 🗑️';
+                } else if (item.lastAction === 'complete_todo') {
+                    badgeTypeClass = 'notif-badge-done';
+                    badgeTypeLabel = 'Xong task ✅';
+                } else if (item.lastAction === 'uncomplete_todo') {
+                    badgeTypeClass = 'notif-badge-edit';
+                    badgeTypeLabel = 'Mở lại task ⏳';
+                } else if (item.lastAction === 'create_todo' || (!item.lastAction && item.createdAt && item.createdAt > lastLoginTime)) {
+                    badgeTypeClass = 'notif-badge-new';
+                    badgeTypeLabel = 'Task mới 📝';
+                } else {
+                    badgeTypeClass = 'notif-badge-edit';
+                    badgeTypeLabel = 'Sửa task 📝';
+                }
+            } else {
+                const isDeletedEvent = Boolean(item.isDeleted || item.lastAction === 'delete_event');
+                const isDeletedFeeling = Boolean(item.lastAction === 'delete_feeling');
+                const isDelete = isDeletedEvent || isDeletedFeeling;
+                const isNew = !isDelete && item.createdAt && item.createdAt > lastLoginTime;
+
+                if (isDelete) {
+                    badgeTypeClass = 'notif-badge-delete';
+                    badgeTypeLabel = isDeletedFeeling ? 'Xóa bình luận 🗑️' : 'Xóa 🗑️';
+                } else if (isNew) {
+                    badgeTypeClass = 'notif-badge-new';
+                    badgeTypeLabel = 'Mới 💌';
+                }
+            }
+
+            const timeVal = ev.updatedAt || (ev.date ? new Date(ev.date).getTime() : 0);
+            const notifId = `${ev.key}_${timeVal}`;
+            const timeVal = item.updatedAt || (item.date ? new Date(item.date).getTime() : (item.time ? new Date(item.time).getTime() : 0));
+            const notifId = `${item.key}_${timeVal}`;
+            const timeStr = new Date(timeVal).toLocaleString('vi-VN', {
+                hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit'
+            });
+            const author = ev.updatedBy || (currentUser === 'Duy' ? 'Chi' : 'Duy');
+            const author = item.updatedBy || (currentUser === 'Duy' ? 'Chi' : 'Duy');
+            const itemTitle = item.notifKind === 'todo' ? (item.name || 'Kế hoạch') : (item.title || 'Kỷ niệm');
+
+            return `
+                <div class="notif-item" onclick="scrollToEvent('${ev.key}', '${notifId}')">
+                <div class="notif-item" onclick="scrollToEvent('${item.key}', '${notifId}', '${item.notifKind}')">
+                    <div class="notif-title">
+                        <span class="notif-badge-type ${badgeTypeClass}">[${badgeTypeLabel}]</span>
+                        ${ev.title || 'Kỷ niệm'}
+                        ${itemTitle}
+                    </div>
+                    <div class="notif-time">${author} • ${timeStr}</div>
+                </div>
+            `;
+        }).join('');
+    } else {
+        if (markAllReadBtn) markAllReadBtn.style.display = 'none';
+        notifBadge.style.display = 'none';
+        notifList.innerHTML = '<div class="notif-empty">Không có cập nhật mới nào ✨</div>';
+    }
+}
+
+if (notifTrigger && notifDropdown) {
+    notifTrigger.addEventListener('click', (e) => {
+        if (e.target.closest('#notifDropdown')) return;
+        e.stopPropagation();
+        notifDropdown.classList.toggle('active');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!notifTrigger.contains(e.target)) {
+            notifDropdown.classList.remove('active');
+        }
+    });
+}
+
+if (markAllReadBtn) {
+    markAllReadBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        markAllNotificationsAsRead();
+    });
+}
+
+window.scrollToEvent = function(key, notifId) {
+window.scrollToEvent = function(key, notifId, kind = 'event') {
+    if (notifDropdown) notifDropdown.classList.remove('active');
+    if (notifId) {
+        markNotificationAsRead(notifId);
+    }
+    const targetItem = document.getElementById(`event-${key}`);
+    if (targetItem) {
+        targetItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetItem.classList.remove('highlight-memory');
+        void targetItem.offsetWidth;
+        targetItem.classList.add('highlight-memory');
+    if (kind === 'todo') {
+        const task = (window.allLoveTodosList || window.loveTodosList || []).find(t => t.key === key);
+        if (!task || task.isDeleted) {
+            alert('Task này đã bị xóa.');
+            return;
+        }
+        editTodo(key);
+        const todoWidget = document.querySelector('.todo-sidebar');
+        if (todoWidget) {
+            todoWidget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    } else {
+        alert('Kỷ niệm này đã bị xóa.');
+        const targetItem = document.getElementById(`event-${key}`);
+        if (targetItem) {
+            targetItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetItem.classList.remove('highlight-memory');
+            void targetItem.offsetWidth;
+            targetItem.classList.add('highlight-memory');
+        } else {
+            alert('Kỷ niệm này đã bị xóa.');
+        }
+    }
+};
 
 // ----------------------------------------------------
 // LOGIC CÀI ĐẶT (SETTINGS MODAL)
@@ -408,7 +688,7 @@ window.editEvent = async function(key) {
 };
 
 window.deleteEvent = async function(key) {
-    const ev = window.loveEventsList.find(item => item.key === key);
+    const ev = (window.allLoveEventsList || window.loveEventsList).find(item => item.key === key);
     const title = ev?.title ? `"${ev.title}"` : 'kỷ niệm này';
     const confirmed = await askConfirm({
         title: 'Xóa kỷ niệm 🗑️',
@@ -420,7 +700,12 @@ window.deleteEvent = async function(key) {
 
     try {
         const itemRef = ref(db, `loveEvents_BiMat123/${key}`);
-        await remove(itemRef);
+        await update(itemRef, {
+            isDeleted: true,
+            updatedAt: Date.now(),
+            updatedBy: currentUser,
+            lastAction: 'delete_event'
+        });
         if (editingKey === key) formModal.classList.remove('active');
     } catch (error) {
         alert("Lỗi khi xóa: " + error.message);
@@ -449,7 +734,19 @@ eventForm.addEventListener('submit', async (e) => {
         images = imagesStr.split(',').map(img => img.trim()).filter(img => img !== '');
     }
 
-    const eventData = { date, title, content, images };
+    const oldEv = editingKey ? (window.allLoveEventsList || window.loveEventsList).find(item => item.key === editingKey) : null;
+    const prevFeeling = currentUser === 'Duy' ? (oldEv?.feelingDuy || '') : (oldEv?.feelingChi || '');
+    const isDeletingFeeling = Boolean(editingKey && prevFeeling.trim() !== '' && myFeeling === '');
+
+    const eventData = {
+        date,
+        title,
+        content,
+        images,
+        updatedAt: Date.now(),
+        updatedBy: currentUser,
+        lastAction: isDeletingFeeling ? 'delete_feeling' : (editingKey ? 'edit_event' : 'create_event')
+    };
 
     if (currentUser === 'Duy') {
         eventData.feelingDuy = myFeeling;
@@ -462,6 +759,8 @@ eventForm.addEventListener('submit', async (e) => {
             const itemRef = ref(db, `loveEvents_BiMat123/${editingKey}`);
             await update(itemRef, eventData);
         } else {
+            eventData.createdAt = Date.now();
+            eventData.createdBy = currentUser;
             await push(eventsRef, eventData);
         }
         formModal.classList.remove('active');
@@ -641,6 +940,12 @@ function renderTodos() {
 window.toggleTodoStatus = async function(key, isCompleted) {
     try {
         await update(ref(db, `loveTodos_BiMat123/${key}`), { isCompleted });
+        await update(ref(db, `loveTodos_BiMat123/${key}`), {
+            isCompleted,
+            updatedAt: Date.now(),
+            updatedBy: currentUser,
+            lastAction: isCompleted ? 'complete_todo' : 'uncomplete_todo'
+        });
     } catch (e) {
         alert('Lỗi: ' + e.message);
     }
@@ -648,6 +953,7 @@ window.toggleTodoStatus = async function(key, isCompleted) {
 
 window.editTodo = function(key) {
     const task = window.loveTodosList.find(t => t.key === key);
+    const task = (window.allLoveTodosList || window.loveTodosList).find(t => t.key === key);
     if (!task) return;
     
     taskIdInput.value = task.key;
@@ -671,6 +977,10 @@ if(todoForm) {
             name: taskNameInput.value.trim(),
             time: taskTimeInput.value,
             content: taskContentInput.value.trim()
+            content: taskContentInput.value.trim(),
+            updatedAt: Date.now(),
+            updatedBy: currentUser,
+            lastAction: key ? 'edit_todo' : 'create_todo'
         };
 
         try {
@@ -678,6 +988,8 @@ if(todoForm) {
                 await update(ref(db, `loveTodos_BiMat123/${key}`), taskData);
             } else {
                 taskData.isCompleted = false;
+                taskData.createdAt = Date.now();
+                taskData.createdBy = currentUser;
                 await push(todosRef, taskData);
             }
             switchTodoTab('list');
@@ -704,6 +1016,12 @@ if(deleteTaskBtn) {
         if (confirmed) {
             try {
                 await remove(ref(db, `loveTodos_BiMat123/${key}`));
+                await update(ref(db, `loveTodos_BiMat123/${key}`), {
+                    isDeleted: true,
+                    updatedAt: Date.now(),
+                    updatedBy: currentUser,
+                    lastAction: 'delete_todo'
+                });
                 switchTodoTab('list');
             } catch (e) {
                 alert('Lỗi xóa task: ' + e.message);

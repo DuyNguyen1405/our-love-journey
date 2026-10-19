@@ -293,6 +293,16 @@ body {
     color: var(--primary-color);
 }
 
+/* Hiệu ứng nổi bật khi cuộn tới kỷ niệm */
+@keyframes highlight-glow {
+    0% { box-shadow: 0 0 0 0 rgba(255, 107, 129, 0.7); border-color: var(--primary-color); }
+    50% { box-shadow: 0 0 20px 4px rgba(255, 107, 129, 0.8); border-color: var(--primary-color); transform: scale(1.02); }
+    100% { box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+}
+.highlight-memory {
+    animation: highlight-glow 2s ease-in-out;
+}
+
 .timeline-actions {
     position: absolute; bottom: 12px; right: 15px;
     display: flex; gap: 12px;
@@ -590,6 +600,147 @@ body {
     font-size: 1.8rem;
     text-align: center;
     margin-bottom: 25px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    z-index: 500;
+}
+
+/* ========================================= */
+/* CSS CHO ICON HOA HỒNG & THÔNG BÁO         */
+/* ========================================= */
+.notification-trigger {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    font-style: normal;
+    transition: transform 0.2s;
+    z-index: 501;
+}
+.notification-trigger:hover {
+    transform: scale(1.15);
+}
+.notification-trigger:has(.notification-dropdown.active) {
+    transform: none;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -6px;
+    right: -10px;
+    background-color: #ff3366;
+    color: #ffffff;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 0.68rem;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    line-height: 1;
+    min-width: 18px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(255, 51, 102, 0.5);
+    animation: badge-pulse 1.8s infinite;
+}
+
+@keyframes badge-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+}
+
+.notification-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(255, 107, 129, 0.25);
+    border: 1px solid #ffd1d8;
+    z-index: 502;
+    text-align: left;
+    font-family: 'Quicksand', sans-serif;
+    overflow: hidden;
+}
+.notification-dropdown.active {
+    display: block;
+}
+
+.notification-dropdown-header {
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--primary-color);
+    border-bottom: 1px solid #ffeef2;
+    background: #fff8f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-mark-all-read {
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 0.72rem;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s;
+    white-space: nowrap;
+}
+.btn-mark-all-read:hover {
+    color: var(--primary-color);
+}
+
+.notification-list {
+    max-height: 270px;
+    overflow-y: auto;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.notification-list.fade-out {
+    opacity: 0;
+    transform: translateY(-6px);
+}
+
+.notif-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid #fff0f3;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.notif-item:hover {
+    background: #fff0f3;
+}
+.notif-item:last-child {
+    border-bottom: none;
+}
+.notif-badge-type {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 5px;
+}
+.notif-badge-new { background: #e7f5ff; color: #1971c2; }
+.notif-badge-edit { background: #fff3bf; color: #d97706; }
+.notif-badge-delete { background: #ffe3e3; color: #e03131; }
+.notif-title { font-weight: 600; font-size: 0.88rem; color: #333; margin-bottom: 3px; word-break: break-word; }
+.notif-time { font-size: 0.74rem; color: #888; }
+.notif-empty {
+    padding: 18px 12px;
+    text-align: center;
+    color: #999;
+    font-size: 0.85rem;
+    font-style: italic;
 }
 
 .todo-sidebar {
