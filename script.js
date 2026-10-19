@@ -334,9 +334,6 @@ function markAllNotificationsAsRead() {
 
     setTimeout(() => {
         const list = getReadNotificationIds();
-        newOrUpdatedEvents.forEach(ev => {
-            const timeVal = ev.updatedAt || (ev.date ? new Date(ev.date).getTime() : 0);
-            const notifId = `${ev.key}_${timeVal}`;
         newOrUpdatedEvents.forEach(item => {
             const timeVal = item.updatedAt || (item.date ? new Date(item.date).getTime() : (item.time ? new Date(item.time).getTime() : 0));
             const notifId = `${item.key}_${timeVal}`;
@@ -356,38 +353,29 @@ function renderNotifications() {
     if (!notifBadge || !notifList) return;
 
     const readNotifIds = getReadNotificationIds();
-    const sourceEvents = window.allLoveEventsList || window.loveEventsList || [];
     const sourceEvents = (window.allLoveEventsList || window.loveEventsList || []).map(ev => ({ ...ev, notifKind: 'event' }));
     const sourceTodos = (window.allLoveTodosList || window.loveTodosList || []).map(td => ({ ...td, notifKind: 'todo' }));
     const allSources = [...sourceEvents, ...sourceTodos];
 
-    // Chỉ lấy sự kiện thay đổi sau mốc đăng nhập trước VÀ do người còn lại thực hiện
-    newOrUpdatedEvents = sourceEvents.filter(ev => {
-        const eventTime = ev.updatedAt || (ev.date ? new Date(ev.date).getTime() : 0);
-        const notifId = `${ev.key}_${eventTime}`;
-    // Chỉ lấy sự kiện/task thay đổi sau mốc đăng nhập trước VÀ do người còn lại thực hiện
+    // Giới hạn trong 7 ngày gần nhất để tránh tràn thông báo cũ trên máy mới
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+
+    // Chỉ lấy các thay đổi chưa đọc gần đây VÀ do người còn lại thực hiện
     newOrUpdatedEvents = allSources.filter(item => {
         const itemTime = item.updatedAt || (item.date ? new Date(item.date).getTime() : (item.time ? new Date(item.time).getTime() : 0));
         const notifId = `${item.key}_${itemTime}`;
         if (readNotifIds.includes(notifId)) return false;
 
-        const isAfterLastLogin = eventTime > lastLoginTime;
-        const isFromOtherUser = ev.updatedBy 
-            ? ev.updatedBy !== currentUser 
-            : (ev.createdBy ? ev.createdBy !== currentUser : true);
-        const isAfterLastLogin = itemTime > lastLoginTime;
+        const isRecent = itemTime > sevenDaysAgo;
         const isFromOtherUser = item.updatedBy 
             ? item.updatedBy !== currentUser 
             : (item.createdBy ? item.createdBy !== currentUser : true);
 
-        return isAfterLastLogin && isFromOtherUser;
+        return isRecent && isFromOtherUser;
     });
 
-    // Sắp xếp sự kiện mới nhất lên đầu
     // Sắp xếp sự kiện/task mới nhất lên đầu
     newOrUpdatedEvents.sort((a, b) => {
-        const timeA = a.updatedAt || (a.date ? new Date(a.date).getTime() : 0);
-        const timeB = b.updatedAt || (b.date ? new Date(b.date).getTime() : 0);
         const timeA = a.updatedAt || (a.date ? new Date(a.date).getTime() : (a.time ? new Date(a.time).getTime() : 0));
         const timeB = b.updatedAt || (b.date ? new Date(b.date).getTime() : (b.time ? new Date(b.time).getTime() : 0));
         return timeB - timeA;
@@ -398,22 +386,9 @@ function renderNotifications() {
         notifBadge.innerText = newOrUpdatedEvents.length > 99 ? '99+' : newOrUpdatedEvents.length;
         notifBadge.style.display = 'inline-block';
 
-        notifList.innerHTML = newOrUpdatedEvents.map(ev => {
-            const isDeletedEvent = Boolean(ev.isDeleted || ev.lastAction === 'delete_event');
-            const isDeletedFeeling = Boolean(ev.lastAction === 'delete_feeling');
-            const isDelete = isDeletedEvent || isDeletedFeeling;
-            const isNew = !isDelete && ev.createdAt && ev.createdAt > lastLoginTime;
-
         notifList.innerHTML = newOrUpdatedEvents.map(item => {
             let badgeTypeClass = 'notif-badge-edit';
             let badgeTypeLabel = 'Cập nhật ✏️';
-
-            if (isDelete) {
-                badgeTypeClass = 'notif-badge-delete';
-                badgeTypeLabel = isDeletedFeeling ? 'Xóa bình luận 🗑️' : 'Xóa 🗑️';
-            } else if (isNew) {
-                badgeTypeClass = 'notif-badge-new';
-                badgeTypeLabel = 'Mới 💌';
             if (item.notifKind === 'todo') {
                 const isDelete = Boolean(item.isDeleted || item.lastAction === 'delete_todo');
                 if (isDelete) {
@@ -436,7 +411,7 @@ function renderNotifications() {
                 const isDeletedEvent = Boolean(item.isDeleted || item.lastAction === 'delete_event');
                 const isDeletedFeeling = Boolean(item.lastAction === 'delete_feeling');
                 const isDelete = isDeletedEvent || isDeletedFeeling;
-                const isNew = !isDelete && item.createdAt && item.createdAt > lastLoginTime;
+                const isNew = !isDelete && (item.lastAction === 'create_event' || (!item.lastAction && item.createdAt && item.createdAt > sevenDaysAgo));
 
                 if (isDelete) {
                     badgeTypeClass = 'notif-badge-delete';
@@ -447,23 +422,18 @@ function renderNotifications() {
                 }
             }
 
-            const timeVal = ev.updatedAt || (ev.date ? new Date(ev.date).getTime() : 0);
-            const notifId = `${ev.key}_${timeVal}`;
             const timeVal = item.updatedAt || (item.date ? new Date(item.date).getTime() : (item.time ? new Date(item.time).getTime() : 0));
             const notifId = `${item.key}_${timeVal}`;
             const timeStr = new Date(timeVal).toLocaleString('vi-VN', {
                 hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit'
             });
-            const author = ev.updatedBy || (currentUser === 'Duy' ? 'Chi' : 'Duy');
             const author = item.updatedBy || (currentUser === 'Duy' ? 'Chi' : 'Duy');
             const itemTitle = item.notifKind === 'todo' ? (item.name || 'Kế hoạch') : (item.title || 'Kỷ niệm');
 
             return `
-                <div class="notif-item" onclick="scrollToEvent('${ev.key}', '${notifId}')">
                 <div class="notif-item" onclick="scrollToEvent('${item.key}', '${notifId}', '${item.notifKind}')">
                     <div class="notif-title">
                         <span class="notif-badge-type ${badgeTypeClass}">[${badgeTypeLabel}]</span>
-                        ${ev.title || 'Kỷ niệm'}
                         ${itemTitle}
                     </div>
                     <div class="notif-time">${author} • ${timeStr}</div>
@@ -498,18 +468,11 @@ if (markAllReadBtn) {
     });
 }
 
-window.scrollToEvent = function(key, notifId) {
 window.scrollToEvent = function(key, notifId, kind = 'event') {
     if (notifDropdown) notifDropdown.classList.remove('active');
     if (notifId) {
         markNotificationAsRead(notifId);
     }
-    const targetItem = document.getElementById(`event-${key}`);
-    if (targetItem) {
-        targetItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        targetItem.classList.remove('highlight-memory');
-        void targetItem.offsetWidth;
-        targetItem.classList.add('highlight-memory');
     if (kind === 'todo') {
         const task = (window.allLoveTodosList || window.loveTodosList || []).find(t => t.key === key);
         if (!task || task.isDeleted) {
@@ -522,7 +485,6 @@ window.scrollToEvent = function(key, notifId, kind = 'event') {
             todoWidget.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     } else {
-        alert('Kỷ niệm này đã bị xóa.');
         const targetItem = document.getElementById(`event-${key}`);
         if (targetItem) {
             targetItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -939,7 +901,6 @@ function renderTodos() {
 
 window.toggleTodoStatus = async function(key, isCompleted) {
     try {
-        await update(ref(db, `loveTodos_BiMat123/${key}`), { isCompleted });
         await update(ref(db, `loveTodos_BiMat123/${key}`), {
             isCompleted,
             updatedAt: Date.now(),
@@ -952,7 +913,6 @@ window.toggleTodoStatus = async function(key, isCompleted) {
 };
 
 window.editTodo = function(key) {
-    const task = window.loveTodosList.find(t => t.key === key);
     const task = (window.allLoveTodosList || window.loveTodosList).find(t => t.key === key);
     if (!task) return;
     
@@ -976,7 +936,6 @@ if(todoForm) {
         const taskData = {
             name: taskNameInput.value.trim(),
             time: taskTimeInput.value,
-            content: taskContentInput.value.trim()
             content: taskContentInput.value.trim(),
             updatedAt: Date.now(),
             updatedBy: currentUser,
@@ -1015,7 +974,6 @@ if(deleteTaskBtn) {
         
         if (confirmed) {
             try {
-                await remove(ref(db, `loveTodos_BiMat123/${key}`));
                 await update(ref(db, `loveTodos_BiMat123/${key}`), {
                     isDeleted: true,
                     updatedAt: Date.now(),
