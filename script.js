@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getDatabase, ref, push, onValue, remove, update, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getDatabase, ref, push, onValue, remove, update, set, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -20,6 +20,7 @@ const auth = getAuth(app);
 const eventsRef = ref(db, 'loveEvents_BiMat123'); 
 const settingsRef = ref(db, 'loveSettings_BiMat123'); // Cài đặt: biệt danh + ghi chú
 const todosRef = ref(db, 'loveTodos_BiMat123'); // Todo List
+const pageViewsRef = ref(db, 'loveStats_BiMat123/pageViews'); // Bộ đếm lượt xem toàn hệ thống
 
 // Biến lưu trữ toàn cục
 window.loveEventsList = [];
@@ -46,6 +47,7 @@ const submitBtn = document.getElementById('submitBtn');
 const formModal = document.getElementById('formModal');
 const feelingInput = document.getElementById('feelingInput');
 const userGreeting = document.getElementById('userGreeting');
+const visitCountValue = document.getElementById('visitCountValue');
 
 // Logic đăng nhập
 const passcodeInput = document.getElementById('passcodeInput');
@@ -53,6 +55,20 @@ const errorMessage = document.getElementById('errorMessage');
 const loginScreen = document.getElementById('loginScreen');
 const mainContent = document.getElementById('mainContent');
 const logoutBtn = document.getElementById('logoutBtn');
+
+function incrementVisitCount() {
+    // Dùng sessionStorage để chỉ tăng 1 lần trong suốt 1 phiên làm việc trên tab hiện tại
+    if (sessionStorage.getItem('hasCountedThisSession')) return;
+
+    sessionStorage.setItem('hasCountedThisSession', 'true');
+    runTransaction(pageViewsRef, (currentVal) => {
+        return (Number(currentVal) || 0) + 1;
+    }).catch((error) => {
+        console.error("Lỗi khi cập nhật bộ đếm lượt truy cập:", error);
+        // Rollback cờ phiên nếu transaction thất bại để thử lại lần sau
+        sessionStorage.removeItem('hasCountedThisSession');
+    });
+}
 
 function loginWithPin(val, isAutoLogin = false) {
     if (val === '1405' || val === '1704') {
@@ -66,6 +82,7 @@ function loginWithPin(val, isAutoLogin = false) {
 
         signInAnonymously(auth).then(() => {
             setupDatabaseListeners();
+            incrementVisitCount();
 
             // Hiển thị lời chào có kèm biệt danh (nếu đã tải xong)
             const currentNickname = (currentUser === 'Duy') ? nicknameDuy : nicknameChi;
@@ -135,6 +152,7 @@ if (passcodeInput && errorMessage && loginScreen && mainContent) {
 if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('savedUserPin');
+        sessionStorage.removeItem('hasCountedThisSession');
         window.location.reload();
     });
 }
@@ -181,6 +199,15 @@ window.setupDatabaseListeners = function() {
         window.loveTodosList = window.allLoveTodosList.filter(t => !t.isDeleted);
         renderTodos();
         renderNotifications();
+    });
+
+    // 2.6 Lắng nghe Bộ đếm lượt truy cập (Global Counter)
+    onValue(pageViewsRef, (snapshot) => {
+        const val = snapshot.val();
+        if (visitCountValue) {
+            const count = Number(val) || 0;
+            visitCountValue.innerText = count.toLocaleString('vi-VN');
+        }
     });
 };
 

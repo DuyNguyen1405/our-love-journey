@@ -44,6 +44,21 @@ body {
     text-shadow: 1px 1px 2px rgba(255, 107, 129, 0.2);
 }
 
+/* Badge đếm lượt truy cập */
+.visit-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: #fff0f3;
+    color: var(--primary-color);
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 20px;
+    border: 1px solid #ffd1d8;
+    box-shadow: 0 2px 4px rgba(255, 107, 129, 0.08);
+}
+
 /* ========================================= */
 /* CSS CHO CÁC NÚT TRÊN THANH MENU           */
 /* ========================================= */
