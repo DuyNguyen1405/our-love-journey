@@ -1216,13 +1216,18 @@ function findSeamlessCutLine(imgData, w, h, axis) {
         const step = Math.max(1, Math.floor((otherL - 10) / sampleCount));
         let sum = 0, jumps = 0, count = 0;
         for (let o = 5; o < otherL - 5; o += step) {
-            const idx1 = axis === 'V' ? (o * w + (t - 1)) * 4 : ((t - 1) * w + o) * 4;
-            const idx2 = axis === 'V' ? (o * w + t) * 4 : (t * w + o) * 4;
+            // Compare pixels slightly further apart to account for WebP compression blur
+            const p1 = Math.max(0, t - 2);
+            const p2 = Math.min(L - 1, t + 1);
+            
+            const idx1 = axis === 'V' ? (o * w + p1) * 4 : (p1 * w + o) * 4;
+            const idx2 = axis === 'V' ? (o * w + p2) * 4 : (p2 * w + o) * 4;
+            
             const d = Math.abs(imgData[idx1] - imgData[idx2]) +
                       Math.abs(imgData[idx1 + 1] - imgData[idx2 + 1]) +
                       Math.abs(imgData[idx1 + 2] - imgData[idx2 + 2]);
             sum += d;
-            if (d > 24) jumps++;
+            if (d > 20) jumps++; // Slightly lower threshold for individual jumps
             count++;
         }
         return { meanDiff: count > 0 ? sum / count : 0, jumpRatio: count > 0 ? jumps / count : 0 };
@@ -1240,7 +1245,8 @@ function findSeamlessCutLine(imgData, w, h, axis) {
     }
 
     // Đòi hỏi đường cắt phải chạy liền mạch > 60% chiều dài ảnh
-    if (bestT !== -1 && bestScore >= 50 && bestRatio >= 0.60) {
+    // Lowered bestScore slightly to account for wider sampling distance which might average out some sharpness
+    if (bestT !== -1 && bestScore >= 40 && bestRatio >= 0.60) {
         return { pos: bestT, score: bestScore };
     }
     return null;
@@ -1253,17 +1259,50 @@ function splitCanvasRecursively(canvas, depth = 0, forceNoSeamless = false) {
 
     if (depth >= 3 || w < 100 || h < 100) return [canvas];
 
-    const ctx = canvas.getContext('2d');
-    const imgData = ctx.getImageData(0, 0, w, h).data;
-    const sepInfo = checkSeparators(imgData, w, h);
+    // Tối ưu hóa bộ nhớ: Tạo canvas thu nhỏ để lấy imgData phân tích (tránh crash RAM)
+    const maxAnalysisSize = 800;
+    let scale = 1;
+    if (Math.max(w, h) > maxAnalysisSize) {
+        scale = maxAnalysisSize / Math.max(w, h);
+    }
+    
+    const analysisW = Math.round(w * scale);
+    const analysisH = Math.round(h * scale);
+    
+    const analysisCanvas = document.createElement('canvas');
+    analysisCanvas.width = analysisW;
+    analysisCanvas.height = analysisH;
+    const analysisCtx = analysisCanvas.getContext('2d', { willReadFrequently: true });
+    analysisCtx.drawImage(canvas, 0, 0, analysisW, analysisH);
+    
+    const imgData = analysisCtx.getImageData(0, 0, analysisW, analysisH).data;
+    const sepInfoRaw = checkSeparators(imgData, analysisW, analysisH);
+
+    // Hàm helper để convert tọa độ cắt từ bản thu nhỏ về bản gốc
+    const unscale = (val) => Math.round(val / scale);
+
+    const sepInfo = {
+        xSegments: sepInfoRaw.xSegments.map(s => ({ start: unscale(s.start), end: unscale(s.end) })),
+        ySegments: sepInfoRaw.ySegments.map(s => ({ start: unscale(s.start), end: unscale(s.end) })),
+        topMargin: unscale(sepInfoRaw.topMargin),
+        bottomMargin: unscale(sepInfoRaw.bottomMargin),
+        leftMargin: unscale(sepInfoRaw.leftMargin),
+        rightMargin: unscale(sepInfoRaw.rightMargin),
+        hasInnerBorders: sepInfoRaw.hasInnerBorders,
+        hasOuterBorders: sepInfoRaw.hasOuterBorders
+    };
 
     const canSplitV = sepInfo.xSegments.length > 1 && sepInfo.xSegments.length <= 4;
     const canSplitH = sepInfo.ySegments.length > 1 && sepInfo.ySegments.length <= 6;
     const hasAnyBorder = sepInfo.hasInnerBorders || sepInfo.hasOuterBorders;
-    const disableSeamless = forceNoSeamless || hasAnyBorder;
+    
+    // Đảm bảo không bị gián đoạn khi đang tiếp tục quá trình cắt đệ quy seamless (2x2)
+    // Nếu ở depth 1 và không ép buộc forceNoSeamless, bỏ qua lỗi nhận diện viền giả của checkSeparators
+    const isContinuingSeamless = depth === 1 && !forceNoSeamless;
+    const disableSeamless = forceNoSeamless || (!isContinuingSeamless && hasAnyBorder);
 
     // ƯU TIÊN 1: Cắt theo rãnh dọc có viền (Ảnh 2, 3)
-    if (canSplitV) {
+    if (!isContinuingSeamless && canSplitV) {
         const subCanvases = [];
         for (const xSeg of sepInfo.xSegments) {
             const sw = xSeg.end - xSeg.start;
@@ -1280,7 +1319,7 @@ function splitCanvasRecursively(canvas, depth = 0, forceNoSeamless = false) {
     }
 
     // ƯU TIÊN 2: Cắt theo rãnh ngang có viền (Ảnh 2, 3, 4)
-    if (canSplitH) {
+    if (!isContinuingSeamless && canSplitH) {
         const subCanvases = [];
         for (const ySeg of sepInfo.ySegments) {
             const sw = sepInfo.rightMargin - sepInfo.leftMargin;
@@ -1298,8 +1337,11 @@ function splitCanvasRecursively(canvas, depth = 0, forceNoSeamless = false) {
 
     // ƯU TIÊN 3: Cắt ảnh ghép không viền 2x2 (Ảnh 1)
     if (!disableSeamless && depth < 2) {
-        const cutH = findSeamlessCutLine(imgData, w, h, 'H');
-        const cutV = findSeamlessCutLine(imgData, w, h, 'V');
+        const cutHRaw = findSeamlessCutLine(imgData, analysisW, analysisH, 'H');
+        const cutVRaw = findSeamlessCutLine(imgData, analysisW, analysisH, 'V');
+        
+        const cutH = cutHRaw ? { pos: unscale(cutHRaw.pos), score: cutHRaw.score } : null;
+        const cutV = cutVRaw ? { pos: unscale(cutVRaw.pos), score: cutVRaw.score } : null;
 
         if (depth === 0) {
             if (cutH) {
