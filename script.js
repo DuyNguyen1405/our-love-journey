@@ -1065,19 +1065,19 @@ window.previewAlbumPhoto = function(index) {
     currentAlbumList.forEach((item, idx) => {
         const slide = document.createElement('div');
         slide.className = 'swiper-slide';
-        const lockText = item.isLocked ? '🔒 Bỏ khóa' : '🔓 Khóa ảnh';
+        const lockIcon = item.isLocked ? '🔒' : '🔓';
         const lockTitle = item.isLocked ? 'Bỏ khóa ảnh để trở về thứ tự cũ' : 'Khóa ảnh luôn ghim ở đầu';
         slide.innerHTML = `
             <img src="${item.url}" alt="Album Preview">
             <div class="slider-photo-toolbar">
                 <button type="button" class="btn-slider-toolbar btn-slider-lock ${item.isLocked ? 'locked' : ''}" onclick="toggleLockAlbumPhoto(${idx}, event)" title="${lockTitle}">
-                    ${lockText}
+                    ${lockIcon}
                 </button>
                 <button type="button" class="btn-slider-toolbar btn-slider-random" onclick="pickRandomAlbumPhoto(event)" title="Xem ảnh ngẫu nhiên">
-                    🎲 Ngẫu nhiên
+                    🎲
                 </button>
                 <button type="button" class="btn-slider-toolbar btn-slider-delete" onclick="deleteAlbumPhoto(${idx}, event)" title="Xóa ảnh này">
-                    🗑️ Xóa ảnh
+                    🗑️
                 </button>
             </div>
         `;
