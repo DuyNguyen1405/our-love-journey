@@ -7,7 +7,7 @@ const firebaseConfig = {
     authDomain: "our-love-journey-c2da0.firebaseapp.com",
     databaseURL: "https://our-love-journey-c2da0-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "our-love-journey-c2da0",
-    storageBucket: "our-love-journey-c2da0.firebasestorage.app",
+    storageBucket: "our-love-journey-c2da0.appspot.com",
     messagingSenderId: "428563386307",
     appId: "1:428563386307:web:b2c4daacc93aaf19b1f776"
 };
@@ -21,6 +21,9 @@ const eventsRef = ref(db, 'loveEvents_BiMat123');
 const settingsRef = ref(db, 'loveSettings_BiMat123'); // Cài đặt: biệt danh + ghi chú
 const todosRef = ref(db, 'loveTodos_BiMat123'); // Todo List
 const pageViewsRef = ref(db, 'loveStats_BiMat123/pageViews'); // Bộ đếm lượt xem toàn hệ thống
+const albumPhotosRef = ref(db, 'loveAlbumPhotos_BiMat123'); // Album ảnh chung
+const albumDeletedRef = ref(db, 'loveAlbumDeleted_BiMat123'); // Danh sách ảnh đã xóa riêng lẻ
+const albumLockedRef = ref(db, 'loveAlbumLocked_BiMat123'); // Danh sách ảnh đã khóa lên đầu
 
 // Biến lưu trữ toàn cục
 window.loveEventsList = [];
@@ -209,6 +212,40 @@ window.setupDatabaseListeners = function() {
             visitCountValue.innerText = count.toLocaleString('vi-VN');
         }
     });
+
+    // 2.7 Lắng nghe Album ảnh chung
+    onValue(albumPhotosRef, (snapshot) => {
+        renderAlbumGrid(snapshot.val());
+    });
+
+    // 2.8 Lắng nghe mốc thời gian xóa ảnh album
+    onValue(ref(db, 'loveAlbumSettings_BiMat123/clearedAt'), (snapshot) => {
+        albumClearedAt = Number(snapshot.val()) || 0;
+        syncAndRenderAlbum();
+    });
+
+    // 2.9 Lắng nghe danh sách ảnh bị xóa riêng lẻ
+    onValue(albumDeletedRef, (snapshot) => {
+        const val = snapshot.val();
+        deletedAlbumUrls = new Set();
+        if (val) {
+            Object.values(val).forEach(d => {
+                if (d.url) deletedAlbumUrls.add(d.url);
+                if (d.thumbUrl) deletedAlbumUrls.add(d.thumbUrl);
+            });
+        }
+        syncAndRenderAlbum();
+    });
+
+    // 2.10 Lắng nghe danh sách ảnh bị khóa lên đầu
+    onValue(albumLockedRef, (snapshot) => {
+        lockedAlbumMap = snapshot.val() || {};
+        syncAndRenderAlbum();
+    });
+
+    if (typeof loadIbbAlbumPhotos === 'function') {
+        loadIbbAlbumPhotos();
+    }
 };
 
 const GOODNIGHT_START = new Date(2026, 4, 17); // 17/5/2026, tính cả ngày này là ngày 1
@@ -638,6 +675,745 @@ document.getElementById('openFormBtn').addEventListener('click', () => {
     submitBtn.innerText = 'Lưu Kỷ Niệm 💌';
     formModal.classList.add('active');
 });
+
+// ----------------------------------------------------
+// LOGIC ALBUM & TỰ ĐỘNG CHIA ẢNH GHÉP (CANVAS)
+// ----------------------------------------------------
+const uploadDropzone = document.getElementById('uploadDropzone');
+const photoFileInput = document.getElementById('photoFileInput');
+const uploadProgressContainer = document.getElementById('uploadProgressContainer');
+const uploadProgressBar = document.getElementById('uploadProgressBar');
+const uploadProgressText = document.getElementById('uploadProgressText');
+const albumGrid = document.getElementById('albumGrid');
+const randomAlbumBtn = document.getElementById('randomAlbumBtn');
+const clearAlbumBtn = document.getElementById('clearAlbumBtn');
+const IBB_ALBUM_URL = 'https://ibb.co/album/1JmL2h';
+const IBB_ALBUM_ID = '1JmL2h';
+let currentAlbumList = [];
+let currentFirebaseAlbumData = null;
+let currentIbbAlbumPhotos = [];
+let albumClearedAt = 0;
+let deletedAlbumUrls = new Set();
+let lockedAlbumMap = {};
+
+function getUrlKey(url) {
+    if (!url) return 'unknown';
+    try {
+        return btoa(unescape(encodeURIComponent(url)))
+            .replace(/=/g, '')
+            .replace(/\//g, '_')
+            .replace(/\+/g, '-');
+    } catch (e) {
+        return url.replace(/[.#$\[\]\/]/g, '_');
+    }
+}
+
+async function fetchIbbAlbumPhotos() {
+    const proxyUrls = [
+        `https://api.allorigins.win/get?url=${encodeURIComponent(IBB_ALBUM_URL)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(IBB_ALBUM_URL)}`
+    ];
+
+    let html = null;
+    for (const proxyUrl of proxyUrls) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(proxyUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (res.ok) {
+                if (proxyUrl.includes('allorigins.win/get')) {
+                    const data = await res.json();
+                    html = data?.contents || null;
+                } else {
+                    html = await res.text();
+                }
+                if (html && (html.includes('image-container') || html.includes('list-item') || html.includes('ibb.co'))) {
+                    break;
+                }
+            }
+        } catch {
+            html = null;
+        }
+    }
+
+    if (!html) return [];
+
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const imgElements = doc.querySelectorAll('.image-container img, .list-item img, a[href*="ibb.co/"] img, img[src*="ibb.co"], img[data-src*="ibb.co"]');
+        const photos = [];
+        const seenUrls = new Set();
+
+        imgElements.forEach((img, idx) => {
+            const thumbUrl = img.getAttribute('src') || img.getAttribute('data-src');
+            if (!thumbUrl || thumbUrl.includes('avatar') || thumbUrl.includes('logo') || seenUrls.has(thumbUrl)) return;
+            seenUrls.add(thumbUrl);
+
+            let fullUrl = thumbUrl;
+            if (thumbUrl.includes('.th.')) {
+                fullUrl = thumbUrl.replace('.th.', '.md.');
+            }
+
+            const parentA = img.closest('a');
+            const pageUrl = parentA ? parentA.getAttribute('href') : '';
+
+            photos.push({
+                key: `ibb_${IBB_ALBUM_ID}_${idx}`,
+                url: fullUrl,
+                thumbUrl: thumbUrl,
+                pageUrl: pageUrl,
+                albumId: IBB_ALBUM_ID,
+                source: 'ibb_album',
+                uploadedAt: Date.now() - idx * 1000
+            });
+        });
+
+        return photos;
+    } catch (e) {
+        console.error("Lỗi khi đọc danh sách ảnh từ album ibb.co:", e);
+        return [];
+    }
+}
+
+function mergeAlbumPhotos(firebaseData, ibbPhotos) {
+    const list = [];
+    const urlSet = new Set();
+
+    if (firebaseData) {
+        Object.entries(firebaseData).forEach(([k, v]) => {
+            if (v && v.url && !urlSet.has(v.url)) {
+                if (albumClearedAt && (v.uploadedAt || 0) <= albumClearedAt) return;
+                if (deletedAlbumUrls.has(v.url) || (v.thumbUrl && deletedAlbumUrls.has(v.thumbUrl))) return;
+                urlSet.add(v.url);
+                const urlKey = getUrlKey(v.url);
+                const lockInfo = lockedAlbumMap[urlKey];
+                const isLocked = Boolean(v.isLocked || lockInfo);
+                const lockedAt = lockInfo?.lockedAt || v.lockedAt || 0;
+                list.push({ key: k, ...v, isLocked, lockedAt });
+            }
+        });
+    }
+
+    if (Array.isArray(ibbPhotos)) {
+        ibbPhotos.forEach(p => {
+            if (albumClearedAt && (p.uploadedAt || 0) <= albumClearedAt) return;
+            if (deletedAlbumUrls.has(p.url) || (p.thumbUrl && deletedAlbumUrls.has(p.thumbUrl))) return;
+            const isDuplicate = list.some(item => {
+                if (item.url === p.url) return true;
+                if (item.thumbUrl && p.thumbUrl && item.thumbUrl === p.thumbUrl) return true;
+                if (p.pageUrl && item.url.includes(p.pageUrl.split('/').pop())) return true;
+                return false;
+            });
+            if (!isDuplicate && !urlSet.has(p.url)) {
+                urlSet.add(p.url);
+                const urlKey = getUrlKey(p.url);
+                const lockInfo = lockedAlbumMap[urlKey];
+                const isLocked = Boolean(lockInfo);
+                const lockedAt = lockInfo?.lockedAt || 0;
+                list.push({ ...p, isLocked, lockedAt });
+            }
+        });
+    }
+
+    list.sort((a, b) => {
+        if (Boolean(a.isLocked) !== Boolean(b.isLocked)) {
+            return a.isLocked ? -1 : 1;
+        }
+        if (a.isLocked && b.isLocked) {
+            return (b.lockedAt || 0) - (a.lockedAt || 0);
+        }
+        return (b.uploadedAt || 0) - (a.uploadedAt || 0);
+    });
+    return list;
+}
+
+async function loadIbbAlbumPhotos() {
+    const photos = await fetchIbbAlbumPhotos();
+    if (photos && photos.length > 0) {
+        currentIbbAlbumPhotos = photos;
+        syncAndRenderAlbum();
+    }
+}
+
+if (uploadDropzone && photoFileInput) {
+    uploadDropzone.addEventListener('click', () => photoFileInput.click());
+
+    uploadDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadDropzone.classList.add('dragover');
+    });
+
+    uploadDropzone.addEventListener('dragleave', () => {
+        uploadDropzone.classList.remove('dragover');
+    });
+
+    uploadDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadDropzone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleSelectedFiles(e.dataTransfer.files);
+        }
+    });
+
+    photoFileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            handleSelectedFiles(e.target.files);
+            e.target.value = '';
+        }
+    });
+}
+
+window.pickRandomAlbumPhoto = function(event) {
+    if (event) event.stopPropagation();
+    if (!currentAlbumList || currentAlbumList.length === 0) {
+        alert('Chưa có ảnh nào trong thư viện!');
+        return;
+    }
+
+    let targetIndex = 0;
+    if (currentAlbumList.length > 1) {
+        let currentIndex = -1;
+        if (sliderModal && sliderModal.classList.contains('active') && swiperInstance) {
+            currentIndex = swiperInstance.realIndex !== undefined ? swiperInstance.realIndex : swiperInstance.activeIndex;
+        }
+        do {
+            targetIndex = Math.floor(Math.random() * currentAlbumList.length);
+        } while (targetIndex === currentIndex && currentAlbumList.length > 1);
+    }
+
+    if (sliderModal && sliderModal.classList.contains('active') && swiperInstance) {
+        if (swiperInstance.params && swiperInstance.params.loop) {
+            swiperInstance.slideToLoop(targetIndex);
+        } else {
+            swiperInstance.slideTo(targetIndex);
+        }
+    } else {
+        previewAlbumPhoto(targetIndex);
+    }
+};
+
+if (randomAlbumBtn) {
+    randomAlbumBtn.addEventListener('click', (e) => pickRandomAlbumPhoto(e));
+}
+
+if (clearAlbumBtn) {
+    clearAlbumBtn.addEventListener('click', async () => {
+        if (!currentAlbumList || currentAlbumList.length === 0) {
+            alert('Thư viện ảnh hiện đang trống!');
+            return;
+        }
+
+        const confirmed = await askConfirm({
+            title: 'Xóa toàn bộ ảnh 🗑️',
+            message: `Bạn có chắc chắn muốn xóa toàn bộ ${currentAlbumList.length} ảnh trong thư viện không? Hành động này sẽ dọn sạch danh sách ảnh hiển thị.`,
+            okText: 'Xóa hết',
+            danger: true
+        });
+        if (!confirmed) return;
+
+        try {
+            clearAlbumBtn.innerText = '⏳ Đang xóa...';
+            await remove(albumPhotosRef);
+            await set(ref(db, 'loveAlbumSettings_BiMat123/clearedAt'), Date.now());
+            await remove(albumLockedRef);
+            lockedAlbumMap = {};
+            currentIbbAlbumPhotos = [];
+            currentFirebaseAlbumData = null;
+            syncAndRenderAlbum(null);
+        } catch (error) {
+            alert('Lỗi khi xóa ảnh: ' + error.message);
+        } finally {
+            clearAlbumBtn.innerText = 'Xóa hết ảnh thư viện 🗑️';
+        }
+    });
+}
+
+function syncAndRenderAlbum(firebaseData = currentFirebaseAlbumData) {
+    currentFirebaseAlbumData = firebaseData;
+    const mergedList = mergeAlbumPhotos(currentFirebaseAlbumData, currentIbbAlbumPhotos);
+    renderAlbumGridWithList(mergedList);
+}
+
+function renderAlbumGrid(albumData) {
+    syncAndRenderAlbum(albumData);
+}
+
+function renderAlbumGridWithList(list) {
+    if (!albumGrid) return;
+    const countText = document.getElementById('albumCountText');
+    currentAlbumList = list || [];
+
+    if (currentAlbumList.length === 0) {
+        albumGrid.innerHTML = '<div class="album-empty">Chưa có ảnh nào trong album. Hãy tải ảnh đầu tiên lên nhé!</div>';
+        if (countText) countText.innerText = 'Tất cả ảnh (0)';
+        return;
+    }
+
+    if (countText) countText.innerText = `Tất cả ảnh (${currentAlbumList.length})`;
+
+    albumGrid.innerHTML = currentAlbumList.map((item, idx) => {
+        const thumbSrc = item.thumbUrl || item.url;
+        const lockIcon = item.isLocked ? '🔒' : '🔓';
+        const lockTitle = item.isLocked ? 'Bỏ khóa ảnh' : 'Khóa ảnh lên đầu';
+        return `
+            <div class="album-item ${item.isLocked ? 'is-locked' : ''}" data-index="${idx}" title="Click để phóng to ảnh">
+                <img src="${thumbSrc}" alt="Album Photo" loading="lazy" onerror="this.src='https://via.placeholder.com/80?text=Err'">
+                <span class="album-item-preview">🔍</span>
+                <div class="album-item-actions">
+                    <button type="button" class="album-item-btn album-item-lock ${item.isLocked ? 'locked' : ''}" onclick="toggleLockAlbumPhoto(${idx}, event)" title="${lockTitle}">${lockIcon}</button>
+                    <button type="button" class="album-item-btn album-item-delete" onclick="deleteAlbumPhoto(${idx}, event)" title="Xóa ảnh này">🗑️</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    albumGrid.querySelectorAll('.album-item').forEach(el => {
+        el.addEventListener('click', (e) => {
+            if (e.target.closest('.album-item-actions')) return;
+            const idx = parseInt(el.getAttribute('data-index'), 10);
+            previewAlbumPhoto(idx);
+        });
+    });
+}
+
+window.toggleLockAlbumPhoto = async function(index, event) {
+    if (event) event.stopPropagation();
+    const item = currentAlbumList[index];
+    if (!item) return;
+
+    const isCurrentlyLocked = Boolean(item.isLocked);
+    const urlKey = getUrlKey(item.url);
+
+    try {
+        if (isCurrentlyLocked) {
+            await remove(ref(db, `loveAlbumLocked_BiMat123/${urlKey}`));
+            if (!item.source || item.source !== 'ibb_album') {
+                await update(ref(db, `loveAlbumPhotos_BiMat123/${item.key}`), { isLocked: false });
+            }
+        } else {
+            await set(ref(db, `loveAlbumLocked_BiMat123/${urlKey}`), {
+                url: item.url,
+                thumbUrl: item.thumbUrl || '',
+                lockedAt: Date.now(),
+                lockedBy: currentUser || 'Anonymous'
+            });
+            if (!item.source || item.source !== 'ibb_album') {
+                await update(ref(db, `loveAlbumPhotos_BiMat123/${item.key}`), { isLocked: true, lockedAt: Date.now() });
+            }
+        }
+
+        if (sliderModal && sliderModal.classList.contains('active')) {
+            setTimeout(() => {
+                const newIdx = currentAlbumList.findIndex(p => p.url === item.url);
+                if (newIdx !== -1) {
+                    previewAlbumPhoto(newIdx);
+                }
+            }, 100);
+        }
+    } catch (error) {
+        alert('Lỗi khi cập nhật trạng thái khóa: ' + error.message);
+    }
+};
+
+window.deleteAlbumPhoto = async function(index, event) {
+    if (event) event.stopPropagation();
+    const item = currentAlbumList[index];
+    if (!item) return;
+
+    const confirmed = await askConfirm({
+        title: 'Xóa ảnh 🗑️',
+        message: 'Bạn có chắc chắn muốn xóa ảnh này khỏi thư viện không?',
+        okText: 'Xóa',
+        danger: true
+    });
+    if (!confirmed) return;
+
+    try {
+        if (!item.source || item.source !== 'ibb_album') {
+            await remove(ref(db, `loveAlbumPhotos_BiMat123/${item.key}`));
+        }
+        await push(albumDeletedRef, {
+            url: item.url,
+            thumbUrl: item.thumbUrl || '',
+            deletedAt: Date.now(),
+            deletedBy: currentUser || 'Anonymous'
+        });
+        const urlKey = getUrlKey(item.url);
+        await remove(ref(db, `loveAlbumLocked_BiMat123/${urlKey}`));
+
+        if (sliderModal && sliderModal.classList.contains('active')) {
+            setTimeout(() => {
+                if (currentAlbumList.length === 0) {
+                    sliderModal.classList.remove('active');
+                } else {
+                    const nextIdx = Math.min(index, currentAlbumList.length - 1);
+                    previewAlbumPhoto(nextIdx);
+                }
+            }, 100);
+        }
+    } catch (error) {
+        alert('Lỗi khi xóa ảnh: ' + error.message);
+    }
+};
+
+window.previewAlbumPhoto = function(index) {
+    if (!currentAlbumList || !currentAlbumList[index]) return;
+    swiperWrapper.innerHTML = '';
+    currentAlbumList.forEach((item, idx) => {
+        const slide = document.createElement('div');
+        slide.className = 'swiper-slide';
+        const lockText = item.isLocked ? '🔒 Bỏ khóa' : '🔓 Khóa ảnh';
+        const lockTitle = item.isLocked ? 'Bỏ khóa ảnh để trở về thứ tự cũ' : 'Khóa ảnh luôn ghim ở đầu';
+        slide.innerHTML = `
+            <img src="${item.url}" alt="Album Preview">
+            <div class="slider-photo-toolbar">
+                <button type="button" class="btn-slider-toolbar btn-slider-lock ${item.isLocked ? 'locked' : ''}" onclick="toggleLockAlbumPhoto(${idx}, event)" title="${lockTitle}">
+                    ${lockText}
+                </button>
+                <button type="button" class="btn-slider-toolbar btn-slider-random" onclick="pickRandomAlbumPhoto(event)" title="Xem ảnh ngẫu nhiên">
+                    🎲 Ngẫu nhiên
+                </button>
+                <button type="button" class="btn-slider-toolbar btn-slider-delete" onclick="deleteAlbumPhoto(${idx}, event)" title="Xóa ảnh này">
+                    🗑️ Xóa ảnh
+                </button>
+            </div>
+        `;
+        swiperWrapper.appendChild(slide);
+    });
+
+    sliderModal.classList.add('active');
+    if (swiperInstance) swiperInstance.destroy(true, true);
+    swiperInstance = new Swiper(".mySwiper", {
+        initialSlide: index,
+        navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
+        pagination: { el: ".swiper-pagination", clickable: true },
+        loop: currentAlbumList.length > 1
+    });
+};
+
+// Thuật toán đệ quy tách ảnh theo nhánh (hỗ trợ ảnh lệch cột 3:2, so le, lưới và dải photobooth)
+function splitCanvasRecursively(canvas, depth = 0) {
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Giới hạn độ sâu đệ quy và kích thước ảnh tối thiểu
+    if (depth >= 4 || w < 120 || h < 120) {
+        return [canvas];
+    }
+
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.getImageData(0, 0, w, h).data;
+
+    const marginX = Math.max(2, Math.min(10, Math.floor(w * 0.03)));
+    const marginY = Math.max(2, Math.min(10, Math.floor(h * 0.03)));
+
+    // Kiểm tra dòng ngang có phải là đường phân cách đơn sắc
+    function isRowSeparator(y) {
+        const sampleCount = 35;
+        const step = Math.max(1, Math.floor((w - 2 * marginX) / sampleCount));
+        let sumR = 0, sumG = 0, sumB = 0, count = 0;
+        for (let x = marginX; x < w - marginX; x += step) {
+            const idx = (y * w + x) * 4;
+            sumR += imgData[idx];
+            sumG += imgData[idx + 1];
+            sumB += imgData[idx + 2];
+            count++;
+        }
+        if (count === 0) return false;
+        const avgR = sumR / count;
+        const avgG = sumG / count;
+        const avgB = sumB / count;
+        for (let x = marginX; x < w - marginX; x += step) {
+            const idx = (y * w + x) * 4;
+            const diff = Math.abs(imgData[idx] - avgR) + Math.abs(imgData[idx + 1] - avgG) + Math.abs(imgData[idx + 2] - avgB);
+            if (diff > 32) return false;
+        }
+        return true;
+    }
+
+    // Kiểm tra cột dọc có phải là đường phân cách đơn sắc
+    function isColSeparator(x) {
+        const sampleCount = 35;
+        const step = Math.max(1, Math.floor((h - 2 * marginY) / sampleCount));
+        let sumR = 0, sumG = 0, sumB = 0, count = 0;
+        for (let y = marginY; y < h - marginY; y += step) {
+            const idx = (y * w + x) * 4;
+            sumR += imgData[idx];
+            sumG += imgData[idx + 1];
+            sumB += imgData[idx + 2];
+            count++;
+        }
+        if (count === 0) return false;
+        const avgR = sumR / count;
+        const avgG = sumG / count;
+        const avgB = sumB / count;
+        for (let y = marginY; y < h - marginY; y += step) {
+            const idx = (y * w + x) * 4;
+            const diff = Math.abs(imgData[idx] - avgR) + Math.abs(imgData[idx + 1] - avgG) + Math.abs(imgData[idx + 2] - avgB);
+            if (diff > 32) return false;
+        }
+        return true;
+    }
+
+    // Quét các dải rãnh ngang
+    const rawHBands = [];
+    let inCut = false;
+    let startY = 0;
+    for (let y = 0; y < h; y++) {
+        if (isRowSeparator(y)) {
+            if (!inCut) { inCut = true; startY = y; }
+        } else {
+            if (inCut) {
+                inCut = false;
+                rawHBands.push({ start: startY, end: y - 1, size: y - startY });
+            }
+        }
+    }
+    if (inCut) rawHBands.push({ start: startY, end: h - 1, size: h - startY });
+
+    // Quét các dải rãnh dọc
+    const rawVBands = [];
+    let inColCut = false;
+    let startX = 0;
+    for (let x = 0; x < w; x++) {
+        if (isColSeparator(x)) {
+            if (!inColCut) { inColCut = true; startX = x; }
+        } else {
+            if (inColCut) {
+                inColCut = false;
+                rawVBands.push({ start: startX, end: x - 1, size: x - startX });
+            }
+        }
+    }
+    if (inColCut) rawVBands.push({ start: startX, end: w - 1, size: w - startX });
+
+    // Tách viền ngoài và rãnh phân tách bên trong
+    let topMargin = 0;
+    let bottomMargin = h;
+    const borderThreshY = Math.max(4, Math.floor(h * 0.02));
+    const innerH = rawHBands.filter(b => {
+        if (b.start <= borderThreshY) { topMargin = Math.max(topMargin, b.end + 1); return false; }
+        if (b.end >= h - 1 - borderThreshY) { bottomMargin = Math.min(bottomMargin, b.start); return false; }
+        return b.size >= 3 && b.size <= Math.floor(h * 0.35);
+    });
+
+    let leftMargin = 0;
+    let rightMargin = w;
+    const borderThreshX = Math.max(4, Math.floor(w * 0.02));
+    const innerV = rawVBands.filter(b => {
+        if (b.start <= borderThreshX) { leftMargin = Math.max(leftMargin, b.end + 1); return false; }
+        if (b.end >= w - 1 - borderThreshX) { rightMargin = Math.min(rightMargin, b.start); return false; }
+        return b.size >= 3 && b.size <= Math.floor(w * 0.35);
+    });
+
+    // Xác định các đoạn cột dọc
+    const xSegments = [];
+    let prevX = leftMargin;
+    for (const sep of innerV) {
+        if (sep.start > prevX + 40) {
+            xSegments.push({ start: prevX, end: sep.start });
+        }
+        prevX = sep.end + 1;
+    }
+    if (rightMargin > prevX + 40) {
+        xSegments.push({ start: prevX, end: rightMargin });
+    }
+
+    // Xác định các đoạn hàng ngang
+    const ySegments = [];
+    let prevY = topMargin;
+    for (const sep of innerH) {
+        if (sep.start > prevY + 40) {
+            ySegments.push({ start: prevY, end: sep.start });
+        }
+        prevY = sep.end + 1;
+    }
+    if (bottomMargin > prevY + 40) {
+        ySegments.push({ start: prevY, end: bottomMargin });
+    }
+
+    const canSplitV = xSegments.length > 1 && xSegments.length <= 6;
+    const canSplitH = ySegments.length > 1 && ySegments.length <= 6;
+
+    // Ưu tiên tách theo chiều dọc nếu có rãnh dọc xuyên suốt
+    if (canSplitV) {
+        const subCanvases = [];
+        for (const xSeg of xSegments) {
+            const sw = xSeg.end - xSeg.start;
+            const sh = bottomMargin - topMargin;
+            if (sw > 50 && sh > 50) {
+                const subCanvas = document.createElement('canvas');
+                subCanvas.width = sw;
+                subCanvas.height = sh;
+                const subCtx = subCanvas.getContext('2d');
+                subCtx.drawImage(canvas, xSeg.start, topMargin, sw, sh, 0, 0, sw, sh);
+                subCanvases.push(...splitCanvasRecursively(subCanvas, depth + 1));
+            }
+        }
+        if (subCanvases.length > 1) {
+            return subCanvases;
+        }
+    }
+
+    // Nếu không có rãnh dọc xuyên suốt, tách theo chiều ngang
+    if (canSplitH) {
+        const subCanvases = [];
+        for (const ySeg of ySegments) {
+            const sw = rightMargin - leftMargin;
+            const sh = ySeg.end - ySeg.start;
+            if (sw > 50 && sh > 50) {
+                const subCanvas = document.createElement('canvas');
+                subCanvas.width = sw;
+                subCanvas.height = sh;
+                const subCtx = subCanvas.getContext('2d');
+                subCtx.drawImage(canvas, leftMargin, ySeg.start, sw, sh, 0, 0, sw, sh);
+                subCanvases.push(...splitCanvasRecursively(subCanvas, depth + 1));
+            }
+        }
+        if (subCanvases.length > 1) {
+            return subCanvases;
+        }
+    }
+
+    // Không còn đường rãnh nào có thể tách -> giữ nguyên mảnh ảnh này
+    return [canvas];
+}
+
+async function processAndSplitCollage(file) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const w = img.width;
+            const h = img.height;
+            canvas.width = w;
+            canvas.height = h;
+            ctx.drawImage(img, 0, 0);
+
+            // Nếu ảnh quá nhỏ thì không cần phân tích
+            if (w < 250 || h < 250) {
+                canvasToBlob(canvas).then(blob => resolve([blob]));
+                return;
+            }
+
+            const resultCanvases = splitCanvasRecursively(canvas, 0);
+            if (resultCanvases && resultCanvases.length > 1) {
+                Promise.all(resultCanvases.map(canvasToBlob)).then(blobs => {
+                    const validBlobs = blobs.filter(Boolean);
+                    resolve(validBlobs.length > 0 ? validBlobs : [file]);
+                });
+            } else {
+                canvasToBlob(canvas).then(blob => resolve([blob || file]));
+            }
+        };
+        img.onerror = () => resolve([file]);
+        img.src = url;
+    });
+}
+
+function canvasToBlob(canvas) {
+    return new Promise(resolve => {
+        canvas.toBlob(blob => {
+            resolve(blob || null);
+        }, 'image/webp', 0.88);
+    });
+}
+
+async function handleSelectedFiles(fileList) {
+    const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+
+    uploadProgressContainer.style.display = 'block';
+    uploadProgressBar.style.width = '5%';
+    uploadProgressText.innerText = 'Đang phân tích và cắt ảnh ghép...';
+
+    const finalBlobs = [];
+    for (let i = 0; i < files.length; i++) {
+        const blobs = await processAndSplitCollage(files[i]);
+        finalBlobs.push(...blobs);
+    }
+
+    const total = finalBlobs.length;
+    let completed = 0;
+    let failed = 0;
+
+    for (let i = 0; i < total; i++) {
+        const blob = finalBlobs[i];
+        if (!blob) continue;
+
+        const formData = new FormData();
+        formData.append('key', '428c31582c15eb58b9bf14e4c7f3a4ea');
+        formData.append('album_id', IBB_ALBUM_ID);
+        formData.append('image', blob, `love_${Date.now()}_${i}.webp`);
+
+        await new Promise((resolveUpload) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'https://api.imgbb.com/1/upload', true);
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const progress = (e.loaded / e.total) * 100;
+                    const totalPercent = Math.round(((completed + (progress / 100)) / total) * 100);
+                    uploadProgressBar.style.width = `${totalPercent}%`;
+                    uploadProgressText.innerText = `Đang tải ảnh ${completed + 1}/${total} (${totalPercent}%)...`;
+                }
+            };
+
+            xhr.onload = async () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.success && response.data) {
+                            const imgData = response.data;
+                            await push(albumPhotosRef, {
+                                url: imgData.display_url || imgData.url,
+                                thumbUrl: imgData.thumb?.url || imgData.url,
+                                albumId: IBB_ALBUM_ID,
+                                uploadedAt: Date.now(),
+                                uploadedBy: currentUser || 'Anonymous'
+                            });
+                            completed++;
+                            resolveUpload();
+                            return;
+                        }
+                    } catch (err) {
+                        console.error("Lỗi parse phản hồi ImgBB:", err);
+                    }
+                }
+                console.error("Lỗi upload ImgBB:", xhr.status, xhr.responseText);
+                failed++;
+                resolveUpload();
+            };
+
+            xhr.onerror = () => {
+                console.error("Lỗi kết nối khi tải ảnh lên ImgBB");
+                failed++;
+                resolveUpload();
+            };
+
+            xhr.send(formData);
+        });
+    }
+
+    if (failed > 0) {
+        uploadProgressBar.style.background = '#e03131';
+        uploadProgressText.innerText = `Có ${failed}/${total} ảnh tải lên thất bại (kiểm tra kết nối ImgBB).`;
+    } else {
+        uploadProgressBar.style.width = '100%';
+        uploadProgressText.innerText = `Hoàn tất! Đã thêm ${completed} ảnh vào Album.`;
+    }
+    await loadIbbAlbumPhotos();
+    setTimeout(() => {
+        uploadProgressContainer.style.display = 'none';
+        uploadProgressBar.style.background = '';
+    }, 3500);
+}
 
 document.getElementById('closeFormBtn').addEventListener('click', () => {
     formModal.classList.remove('active');

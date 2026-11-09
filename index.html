@@ -65,6 +65,7 @@
                     </div>
                     
                     <button type="submit" class="btn-submit" id="saveSettingsBtn">Lưu Cài Đặt 💾</button>
+                    <button type="button" class="btn-submit" id="clearAlbumBtn" style="background-color: #e03131; margin-top: 10px;">Xóa hết ảnh thư viện 🗑️</button>
                     <button type="button" class="btn-submit" id="logoutBtn" style="background-color: #fa5252; margin-top: 10px;">Đăng xuất 🚪</button>
                 </form>
             </div>
@@ -207,6 +208,35 @@
                             </div>
                             <button type="button" class="btn-confirm-ok danger" style="width: 100%; margin-top: 10px; display: none;" id="deleteTaskBtn">🗑️ Xóa Task</button>
                         </form>
+                    </div>
+                </div>
+
+                <!-- Album Kỷ Niệm Độc Lập -->
+                <div class="album-widget">
+                    <h2 class="album-widget-header">Love Gallery 📸</h2>
+                    <div class="upload-dropzone" id="uploadDropzone">
+                        <input type="file" id="photoFileInput" multiple accept="image/*" style="display: none;">
+                        <div class="dropzone-content">
+                            <span class="dropzone-icon">☁️</span>
+                            <p>Tải ảnh</p>
+                        </div>
+                    </div>
+
+                    <div class="upload-progress-container" id="uploadProgressContainer" style="display: none;">
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill" id="uploadProgressBar"></div>
+                        </div>
+                        <span class="progress-text" id="uploadProgressText">Đang xử lý ảnh... 0%</span>
+                    </div>
+
+                    <div class="album-header">
+                        <span id="albumCountText">Tất cả ảnh (0)</span>
+                        <div class="album-header-actions">
+                            <button type="button" class="btn-random-album" id="randomAlbumBtn" title="Xem ảnh ngẫu nhiên">🎲 Ngẫu nhiên</button>
+                        </div>
+                    </div>
+                    <div class="album-grid" id="albumGrid">
+                        <div class="album-empty">Đang tải album ảnh...</div>
                     </div>
                 </div>
             </div>
