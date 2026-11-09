@@ -217,7 +217,10 @@ window.setupDatabaseListeners = function() {
 
     // 2.7 Lắng nghe Album ảnh chung
     onValue(albumPhotosRef, (snapshot) => {
-        renderAlbumGrid(snapshot.val());
+        const data = snapshot.val();
+        window.allLovePhotosList = data ? Object.entries(data).map(([key, value]) => ({ key, ...value })) : [];
+        renderAlbumGrid(data);
+        renderNotifications();
     });
 
     // 2.8 Lắng nghe mốc thời gian xóa ảnh album
@@ -423,6 +426,11 @@ function markNotificationAsRead(notifId) {
     renderNotifications();
 }
 
+function getNotifTime(item) {
+    if (item.notifKind === 'photo') return item.uploadedAt || 0;
+    return item.updatedAt || item.createdAt || (item.date ? new Date(item.date).getTime() : (item.time ? new Date(item.time).getTime() : 0));
+}
+
 function markAllNotificationsAsRead() {
     if (!currentUser || !newOrUpdatedEvents || newOrUpdatedEvents.length === 0) return;
     if (notifList && notifList.classList.contains('fade-out')) return;
@@ -434,7 +442,7 @@ function markAllNotificationsAsRead() {
     setTimeout(() => {
         const list = getReadNotificationIds();
         newOrUpdatedEvents.forEach(item => {
-            const timeVal = item.updatedAt || (item.date ? new Date(item.date).getTime() : (item.time ? new Date(item.time).getTime() : 0));
+            const timeVal = getNotifTime(item);
             const notifId = `${item.key}_${timeVal}`;
             if (!list.includes(notifId)) {
                 list.push(notifId);
@@ -445,6 +453,9 @@ function markAllNotificationsAsRead() {
         if (notifList) {
             notifList.classList.remove('fade-out');
         }
+        if (notifDropdown) {
+            notifDropdown.classList.remove('active');
+        }
     }, 300);
 }
 
@@ -454,31 +465,71 @@ function renderNotifications() {
     const readNotifIds = getReadNotificationIds();
     const sourceEvents = (window.allLoveEventsList || window.loveEventsList || []).map(ev => ({ ...ev, notifKind: 'event' }));
     const sourceTodos = (window.allLoveTodosList || window.loveTodosList || []).map(td => ({ ...td, notifKind: 'todo' }));
-    const allSources = [...sourceEvents, ...sourceTodos];
+    
+    const sourcePhotos = [];
+    if (window.allLovePhotosList && window.allLovePhotosList.length > 0) {
+        const validPhotos = window.allLovePhotosList.filter(p => {
+            if (albumClearedAt && (p.uploadedAt || 0) <= albumClearedAt) return false;
+            if (deletedAlbumUrls && (deletedAlbumUrls.has(p.url) || deletedAlbumUrls.has(p.thumbUrl))) return false;
+            return true;
+        });
+        validPhotos.sort((a, b) => (a.uploadedAt || 0) - (b.uploadedAt || 0));
 
-    // Giới hạn trong 7 ngày gần nhất để tránh tràn thông báo cũ trên máy mới
+        let currentBatch = [];
+        for (let i = 0; i < validPhotos.length; i++) {
+            const photo = validPhotos[i];
+            if (currentBatch.length === 0) {
+                currentBatch.push(photo);
+            } else {
+                const prevPhoto = currentBatch[currentBatch.length - 1];
+                const timeDiff = Math.abs((photo.uploadedAt || 0) - (prevPhoto.uploadedAt || 0));
+                if (photo.uploadedBy === prevPhoto.uploadedBy && timeDiff <= 300000) {
+                    currentBatch.push(photo);
+                } else {
+                    sourcePhotos.push({
+                        notifKind: 'photo',
+                        key: currentBatch[0].key,
+                        uploadedAt: currentBatch[currentBatch.length - 1].uploadedAt,
+                        uploadedBy: currentBatch[0].uploadedBy,
+                        photoCount: currentBatch.length,
+                        firstPhotoUrl: currentBatch[0].thumbUrl || currentBatch[0].url
+                    });
+                    currentBatch = [photo];
+                }
+            }
+        }
+        if (currentBatch.length > 0) {
+            sourcePhotos.push({
+                notifKind: 'photo',
+                key: currentBatch[0].key,
+                uploadedAt: currentBatch[currentBatch.length - 1].uploadedAt,
+                uploadedBy: currentBatch[0].uploadedBy,
+                photoCount: currentBatch.length,
+                firstPhotoUrl: currentBatch[0].thumbUrl || currentBatch[0].url
+            });
+        }
+    }
+
+    const allSources = [...sourceEvents, ...sourceTodos, ...sourcePhotos];
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
 
-    // Chỉ lấy các thay đổi chưa đọc gần đây VÀ do người còn lại thực hiện
     newOrUpdatedEvents = allSources.filter(item => {
-        const itemTime = item.updatedAt || (item.date ? new Date(item.date).getTime() : (item.time ? new Date(item.time).getTime() : 0));
+        const itemTime = getNotifTime(item);
+        let isFromOtherUser = false;
+        
+        if (item.notifKind === 'photo') {
+            isFromOtherUser = item.uploadedBy ? item.uploadedBy !== currentUser : true;
+        } else {
+            isFromOtherUser = item.updatedBy ? item.updatedBy !== currentUser : (item.createdBy ? item.createdBy !== currentUser : true);
+        }
+
         const notifId = `${item.key}_${itemTime}`;
         if (readNotifIds.includes(notifId)) return false;
 
-        const isRecent = itemTime > sevenDaysAgo;
-        const isFromOtherUser = item.updatedBy 
-            ? item.updatedBy !== currentUser 
-            : (item.createdBy ? item.createdBy !== currentUser : true);
-
-        return isRecent && isFromOtherUser;
+        return itemTime > sevenDaysAgo && isFromOtherUser;
     });
 
-    // Sắp xếp sự kiện/task mới nhất lên đầu
-    newOrUpdatedEvents.sort((a, b) => {
-        const timeA = a.updatedAt || (a.date ? new Date(a.date).getTime() : (a.time ? new Date(a.time).getTime() : 0));
-        const timeB = b.updatedAt || (b.date ? new Date(b.date).getTime() : (b.time ? new Date(b.time).getTime() : 0));
-        return timeB - timeA;
-    });
+    newOrUpdatedEvents.sort((a, b) => getNotifTime(b) - getNotifTime(a));
 
     if (newOrUpdatedEvents.length > 0) {
         if (markAllReadBtn) markAllReadBtn.style.display = 'inline-block';
@@ -488,7 +539,16 @@ function renderNotifications() {
         notifList.innerHTML = newOrUpdatedEvents.map(item => {
             let badgeTypeClass = 'notif-badge-edit';
             let badgeTypeLabel = 'Cập nhật ✏️';
-            if (item.notifKind === 'todo') {
+            let itemTitle = '';
+            let author = '';
+            let timeVal = getNotifTime(item);
+
+            if (item.notifKind === 'photo') {
+                badgeTypeClass = 'notif-badge-new';
+                badgeTypeLabel = 'Ảnh mới 🖼️';
+                itemTitle = `Đã tải lên ${item.photoCount} ảnh`;
+                author = item.uploadedBy || (currentUser === 'Duy' ? 'Chi' : 'Duy');
+            } else if (item.notifKind === 'todo') {
                 const isDelete = Boolean(item.isDeleted || item.lastAction === 'delete_todo');
                 if (isDelete) {
                     badgeTypeClass = 'notif-badge-delete';
@@ -506,6 +566,8 @@ function renderNotifications() {
                     badgeTypeClass = 'notif-badge-edit';
                     badgeTypeLabel = 'Sửa task 📝';
                 }
+                itemTitle = item.name || 'Kế hoạch';
+                author = item.updatedBy || (currentUser === 'Duy' ? 'Chi' : 'Duy');
             } else {
                 const isDeletedEvent = Boolean(item.isDeleted || item.lastAction === 'delete_event');
                 const isDeletedFeeling = Boolean(item.lastAction === 'delete_feeling');
@@ -519,15 +581,14 @@ function renderNotifications() {
                     badgeTypeClass = 'notif-badge-new';
                     badgeTypeLabel = 'Mới 💌';
                 }
+                itemTitle = item.title || 'Kỷ niệm';
+                author = item.updatedBy || (currentUser === 'Duy' ? 'Chi' : 'Duy');
             }
 
-            const timeVal = item.updatedAt || (item.date ? new Date(item.date).getTime() : (item.time ? new Date(item.time).getTime() : 0));
             const notifId = `${item.key}_${timeVal}`;
             const timeStr = new Date(timeVal).toLocaleString('vi-VN', {
                 hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit'
             });
-            const author = item.updatedBy || (currentUser === 'Duy' ? 'Chi' : 'Duy');
-            const itemTitle = item.notifKind === 'todo' ? (item.name || 'Kế hoạch') : (item.title || 'Kỷ niệm');
 
             return `
                 <div class="notif-item" onclick="scrollToEvent('${item.key}', '${notifId}', '${item.notifKind}')">
@@ -572,6 +633,25 @@ window.scrollToEvent = function(key, notifId, kind = 'event') {
     if (notifId) {
         markNotificationAsRead(notifId);
     }
+    
+    if (kind === 'photo') {
+        const albumWidget = document.getElementById('albumGrid');
+        if (albumWidget) {
+            albumWidget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        if (typeof currentAlbumList !== 'undefined' && currentAlbumList.length > 0) {
+            const photoIndex = currentAlbumList.findIndex(p => p.key === key);
+            if (photoIndex !== -1) {
+                if (typeof previewAlbumPhoto === 'function') {
+                    previewAlbumPhoto(photoIndex);
+                }
+            } else {
+                alert('Ảnh này có thể đã bị xóa.');
+            }
+        }
+        return;
+    }
+
     if (kind === 'todo') {
         const task = (window.allLoveTodosList || window.loveTodosList || []).find(t => t.key === key);
         if (!task || task.isDeleted) {
@@ -1373,7 +1453,7 @@ function splitCanvasRecursively(canvas, depth = 0, forceNoSeamless = false) {
         if (subCanvases.length > 1) return subCanvases;
     }
 
-    // ƯU TIÊN 3: Cắt ảnh ghép không viền 2x2 (Ảnh 1)
+    // ƯU TIÊN 3: Cắt ảnh ghép không viền 2x2, 2x1, 1x2
     if (!disableSeamless && depth < 2) {
         const cutHRaw = findSeamlessCutLine(imgData, analysisW, analysisH, 'H');
         const cutVRaw = findSeamlessCutLine(imgData, analysisW, analysisH, 'V');
@@ -1381,33 +1461,32 @@ function splitCanvasRecursively(canvas, depth = 0, forceNoSeamless = false) {
         const cutH = cutHRaw ? { pos: unscale(cutHRaw.pos), score: cutHRaw.score } : null;
         const cutV = cutVRaw ? { pos: unscale(cutVRaw.pos), score: cutVRaw.score } : null;
 
-        if (depth === 0) {
-            if (cutH) {
-                const topCanvas = document.createElement('canvas');
-                topCanvas.width = w; topCanvas.height = cutH.pos;
-                topCanvas.getContext('2d').drawImage(canvas, 0, 0, w, cutH.pos, 0, 0, w, cutH.pos);
+        if (cutH && (!cutV || cutH.score >= cutV.score)) {
+            const topCanvas = document.createElement('canvas');
+            topCanvas.width = w; topCanvas.height = cutH.pos;
+            topCanvas.getContext('2d').drawImage(canvas, 0, 0, w, cutH.pos, 0, 0, w, cutH.pos);
 
-                const botCanvas = document.createElement('canvas');
-                botCanvas.width = w; botCanvas.height = h - cutH.pos;
-                botCanvas.getContext('2d').drawImage(canvas, 0, cutH.pos, w, h - cutH.pos, 0, 0, w, h - cutH.pos);
+            const botCanvas = document.createElement('canvas');
+            botCanvas.width = w; botCanvas.height = h - cutH.pos;
+            botCanvas.getContext('2d').drawImage(canvas, 0, cutH.pos, w, h - cutH.pos, 0, 0, w, h - cutH.pos);
 
-                return [
-                    ...splitCanvasRecursively(topCanvas, 1, false),
-                    ...splitCanvasRecursively(botCanvas, 1, false)
-                ];
-            }
-        } else if (depth === 1) {
-            // Cắt đúng 1 đường dọc ở giữa để ra 2 mảnh và dừng lại
-            const midV = cutV ? cutV.pos : Math.floor(w / 2);
+            return [
+                ...splitCanvasRecursively(topCanvas, depth + 1, false),
+                ...splitCanvasRecursively(botCanvas, depth + 1, false)
+            ];
+        } else if (cutV) {
             const leftCanvas = document.createElement('canvas');
-            leftCanvas.width = midV; leftCanvas.height = h;
-            leftCanvas.getContext('2d').drawImage(canvas, 0, 0, midV, h, 0, 0, midV, h);
+            leftCanvas.width = cutV.pos; leftCanvas.height = h;
+            leftCanvas.getContext('2d').drawImage(canvas, 0, 0, cutV.pos, h, 0, 0, cutV.pos, h);
 
             const rightCanvas = document.createElement('canvas');
-            rightCanvas.width = w - midV; rightCanvas.height = h;
-            rightCanvas.getContext('2d').drawImage(canvas, midV, 0, w - midV, h, 0, 0, w - midV, h);
+            rightCanvas.width = w - cutV.pos; rightCanvas.height = h;
+            rightCanvas.getContext('2d').drawImage(canvas, cutV.pos, 0, w - cutV.pos, h, 0, 0, w - cutV.pos, h);
 
-            return [leftCanvas, rightCanvas];
+            return [
+                ...splitCanvasRecursively(leftCanvas, depth + 1, false),
+                ...splitCanvasRecursively(rightCanvas, depth + 1, false)
+            ];
         }
     }
 
