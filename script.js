@@ -1094,23 +1094,11 @@ window.previewAlbumPhoto = function(index) {
     });
 };
 
-// Thuật toán đệ quy tách ảnh theo nhánh (hỗ trợ ảnh lệch cột 3:2, so le, lưới và dải photobooth)
-function splitCanvasRecursively(canvas, depth = 0) {
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // Giới hạn độ sâu đệ quy và kích thước ảnh tối thiểu
-    if (depth >= 4 || w < 120 || h < 120) {
-        return [canvas];
-    }
-
-    const ctx = canvas.getContext('2d');
-    const imgData = ctx.getImageData(0, 0, w, h).data;
-
+// 1. Kiểm tra rãnh viền đơn sắc (Áp dụng cho ảnh viền xanh, viền hồng, viền tím)
+function checkSeparators(imgData, w, h) {
     const marginX = Math.max(2, Math.min(10, Math.floor(w * 0.03)));
     const marginY = Math.max(2, Math.min(10, Math.floor(h * 0.03)));
 
-    // Kiểm tra dòng ngang có phải là đường phân cách đơn sắc
     function isRowSeparator(y) {
         const sampleCount = 35;
         const step = Math.max(1, Math.floor((w - 2 * marginX) / sampleCount));
@@ -1123,18 +1111,15 @@ function splitCanvasRecursively(canvas, depth = 0) {
             count++;
         }
         if (count === 0) return false;
-        const avgR = sumR / count;
-        const avgG = sumG / count;
-        const avgB = sumB / count;
+        const avgR = sumR / count, avgG = sumG / count, avgB = sumB / count;
         for (let x = marginX; x < w - marginX; x += step) {
             const idx = (y * w + x) * 4;
             const diff = Math.abs(imgData[idx] - avgR) + Math.abs(imgData[idx + 1] - avgG) + Math.abs(imgData[idx + 2] - avgB);
-            if (diff > 32) return false;
+            if (diff > 30) return false;
         }
         return true;
     }
 
-    // Kiểm tra cột dọc có phải là đường phân cách đơn sắc
     function isColSeparator(x) {
         const sampleCount = 35;
         const step = Math.max(1, Math.floor((h - 2 * marginY) / sampleCount));
@@ -1147,138 +1132,206 @@ function splitCanvasRecursively(canvas, depth = 0) {
             count++;
         }
         if (count === 0) return false;
-        const avgR = sumR / count;
-        const avgG = sumG / count;
-        const avgB = sumB / count;
+        const avgR = sumR / count, avgG = sumG / count, avgB = sumB / count;
         for (let y = marginY; y < h - marginY; y += step) {
             const idx = (y * w + x) * 4;
             const diff = Math.abs(imgData[idx] - avgR) + Math.abs(imgData[idx + 1] - avgG) + Math.abs(imgData[idx + 2] - avgB);
-            if (diff > 32) return false;
+            if (diff > 30) return false;
         }
         return true;
     }
 
-    // Quét các dải rãnh ngang
     const rawHBands = [];
-    let inCut = false;
-    let startY = 0;
+    let inCut = false, startY = 0;
     for (let y = 0; y < h; y++) {
         if (isRowSeparator(y)) {
             if (!inCut) { inCut = true; startY = y; }
-        } else {
-            if (inCut) {
-                inCut = false;
-                rawHBands.push({ start: startY, end: y - 1, size: y - startY });
-            }
+        } else if (inCut) {
+            inCut = false;
+            rawHBands.push({ start: startY, end: y - 1, size: y - startY });
         }
     }
     if (inCut) rawHBands.push({ start: startY, end: h - 1, size: h - startY });
 
-    // Quét các dải rãnh dọc
     const rawVBands = [];
-    let inColCut = false;
-    let startX = 0;
+    let inColCut = false, startX = 0;
     for (let x = 0; x < w; x++) {
         if (isColSeparator(x)) {
             if (!inColCut) { inColCut = true; startX = x; }
-        } else {
-            if (inColCut) {
-                inColCut = false;
-                rawVBands.push({ start: startX, end: x - 1, size: x - startX });
-            }
+        } else if (inColCut) {
+            inColCut = false;
+            rawVBands.push({ start: startX, end: x - 1, size: x - startX });
         }
     }
     if (inColCut) rawVBands.push({ start: startX, end: w - 1, size: w - startX });
 
-    // Tách viền ngoài và rãnh phân tách bên trong
-    let topMargin = 0;
-    let bottomMargin = h;
+    let topMargin = 0, bottomMargin = h;
     const borderThreshY = Math.max(4, Math.floor(h * 0.02));
     const innerH = rawHBands.filter(b => {
         if (b.start <= borderThreshY) { topMargin = Math.max(topMargin, b.end + 1); return false; }
         if (b.end >= h - 1 - borderThreshY) { bottomMargin = Math.min(bottomMargin, b.start); return false; }
-        return b.size >= 3 && b.size <= Math.floor(h * 0.35);
+        return b.size >= 4 && b.size <= Math.floor(h * 0.35);
     });
 
-    let leftMargin = 0;
-    let rightMargin = w;
+    let leftMargin = 0, rightMargin = w;
     const borderThreshX = Math.max(4, Math.floor(w * 0.02));
     const innerV = rawVBands.filter(b => {
         if (b.start <= borderThreshX) { leftMargin = Math.max(leftMargin, b.end + 1); return false; }
         if (b.end >= w - 1 - borderThreshX) { rightMargin = Math.min(rightMargin, b.start); return false; }
-        return b.size >= 3 && b.size <= Math.floor(w * 0.35);
+        return b.size >= 4 && b.size <= Math.floor(w * 0.35);
     });
 
-    // Xác định các đoạn cột dọc
     const xSegments = [];
     let prevX = leftMargin;
     for (const sep of innerV) {
-        if (sep.start > prevX + 40) {
-            xSegments.push({ start: prevX, end: sep.start });
-        }
+        if (sep.start > prevX + 60) xSegments.push({ start: prevX, end: sep.start });
         prevX = sep.end + 1;
     }
-    if (rightMargin > prevX + 40) {
-        xSegments.push({ start: prevX, end: rightMargin });
-    }
+    if (rightMargin > prevX + 60) xSegments.push({ start: prevX, end: rightMargin });
 
-    // Xác định các đoạn hàng ngang
     const ySegments = [];
     let prevY = topMargin;
     for (const sep of innerH) {
-        if (sep.start > prevY + 40) {
-            ySegments.push({ start: prevY, end: sep.start });
-        }
+        if (sep.start > prevY + 60) ySegments.push({ start: prevY, end: sep.start });
         prevY = sep.end + 1;
     }
-    if (bottomMargin > prevY + 40) {
-        ySegments.push({ start: prevY, end: bottomMargin });
+    if (bottomMargin > prevY + 60) ySegments.push({ start: prevY, end: bottomMargin });
+
+    return {
+        xSegments, ySegments,
+        topMargin, bottomMargin, leftMargin, rightMargin,
+        hasInnerBorders: innerH.length > 0 || innerV.length > 0,
+        hasOuterBorders: topMargin > 0 || bottomMargin < h || leftMargin > 0 || rightMargin < w
+    };
+}
+
+// 2. Tìm đường phân cách sát mí của ảnh ghép 2x2 không viền
+function findSeamlessCutLine(imgData, w, h, axis) {
+    const L = axis === 'V' ? w : h;
+    const otherL = axis === 'V' ? h : w;
+    if (L < 220 || otherL < 200) return null;
+
+    function getDiscontinuity(t) {
+        const sampleCount = 60;
+        const step = Math.max(1, Math.floor((otherL - 10) / sampleCount));
+        let sum = 0, jumps = 0, count = 0;
+        for (let o = 5; o < otherL - 5; o += step) {
+            const idx1 = axis === 'V' ? (o * w + (t - 1)) * 4 : ((t - 1) * w + o) * 4;
+            const idx2 = axis === 'V' ? (o * w + t) * 4 : (t * w + o) * 4;
+            const d = Math.abs(imgData[idx1] - imgData[idx2]) +
+                      Math.abs(imgData[idx1 + 1] - imgData[idx2 + 1]) +
+                      Math.abs(imgData[idx1 + 2] - imgData[idx2 + 2]);
+            sum += d;
+            if (d > 24) jumps++;
+            count++;
+        }
+        return { meanDiff: count > 0 ? sum / count : 0, jumpRatio: count > 0 ? jumps / count : 0 };
     }
 
-    const canSplitV = xSegments.length > 1 && xSegments.length <= 6;
-    const canSplitH = ySegments.length > 1 && ySegments.length <= 6;
+    let bestT = -1, bestScore = 0, bestRatio = 0;
+    const minT = Math.floor(L * 0.47), maxT = Math.floor(L * 0.53);
+    for (let t = minT; t <= maxT; t++) {
+        const disc = getDiscontinuity(t);
+        if (disc.meanDiff > bestScore) {
+            bestScore = disc.meanDiff;
+            bestRatio = disc.jumpRatio;
+            bestT = t;
+        }
+    }
 
-    // Ưu tiên tách theo chiều dọc nếu có rãnh dọc xuyên suốt
+    // Đòi hỏi đường cắt phải chạy liền mạch > 60% chiều dài ảnh
+    if (bestT !== -1 && bestScore >= 50 && bestRatio >= 0.60) {
+        return { pos: bestT, score: bestScore };
+    }
+    return null;
+}
+
+// 3. Phân tách ảnh an toàn: Đúng 4, 5, 8 mảnh cho ảnh photobooth; giữ nguyên ảnh thường
+function splitCanvasRecursively(canvas, depth = 0, forceNoSeamless = false) {
+    const w = canvas.width;
+    const h = canvas.height;
+
+    if (depth >= 3 || w < 100 || h < 100) return [canvas];
+
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.getImageData(0, 0, w, h).data;
+    const sepInfo = checkSeparators(imgData, w, h);
+
+    const canSplitV = sepInfo.xSegments.length > 1 && sepInfo.xSegments.length <= 4;
+    const canSplitH = sepInfo.ySegments.length > 1 && sepInfo.ySegments.length <= 6;
+    const hasAnyBorder = sepInfo.hasInnerBorders || sepInfo.hasOuterBorders;
+    const disableSeamless = forceNoSeamless || hasAnyBorder;
+
+    // ƯU TIÊN 1: Cắt theo rãnh dọc có viền (Ảnh 2, 3)
     if (canSplitV) {
         const subCanvases = [];
-        for (const xSeg of xSegments) {
+        for (const xSeg of sepInfo.xSegments) {
             const sw = xSeg.end - xSeg.start;
-            const sh = bottomMargin - topMargin;
-            if (sw > 50 && sh > 50) {
+            const sh = sepInfo.bottomMargin - sepInfo.topMargin;
+            if (sw > 80 && sh > 80) {
                 const subCanvas = document.createElement('canvas');
                 subCanvas.width = sw;
                 subCanvas.height = sh;
-                const subCtx = subCanvas.getContext('2d');
-                subCtx.drawImage(canvas, xSeg.start, topMargin, sw, sh, 0, 0, sw, sh);
-                subCanvases.push(...splitCanvasRecursively(subCanvas, depth + 1));
+                subCanvas.getContext('2d').drawImage(canvas, xSeg.start, sepInfo.topMargin, sw, sh, 0, 0, sw, sh);
+                subCanvases.push(...splitCanvasRecursively(subCanvas, depth + 1, true));
             }
         }
-        if (subCanvases.length > 1) {
-            return subCanvases;
-        }
+        if (subCanvases.length > 1) return subCanvases;
     }
 
-    // Nếu không có rãnh dọc xuyên suốt, tách theo chiều ngang
+    // ƯU TIÊN 2: Cắt theo rãnh ngang có viền (Ảnh 2, 3, 4)
     if (canSplitH) {
         const subCanvases = [];
-        for (const ySeg of ySegments) {
-            const sw = rightMargin - leftMargin;
+        for (const ySeg of sepInfo.ySegments) {
+            const sw = sepInfo.rightMargin - sepInfo.leftMargin;
             const sh = ySeg.end - ySeg.start;
-            if (sw > 50 && sh > 50) {
+            if (sw > 80 && sh > 80) {
                 const subCanvas = document.createElement('canvas');
                 subCanvas.width = sw;
                 subCanvas.height = sh;
-                const subCtx = subCanvas.getContext('2d');
-                subCtx.drawImage(canvas, leftMargin, ySeg.start, sw, sh, 0, 0, sw, sh);
-                subCanvases.push(...splitCanvasRecursively(subCanvas, depth + 1));
+                subCanvas.getContext('2d').drawImage(canvas, sepInfo.leftMargin, ySeg.start, sw, sh, 0, 0, sw, sh);
+                subCanvases.push(...splitCanvasRecursively(subCanvas, depth + 1, true));
             }
         }
-        if (subCanvases.length > 1) {
-            return subCanvases;
+        if (subCanvases.length > 1) return subCanvases;
+    }
+
+    // ƯU TIÊN 3: Cắt ảnh ghép không viền 2x2 (Ảnh 1)
+    if (!disableSeamless && depth < 2) {
+        const cutH = findSeamlessCutLine(imgData, w, h, 'H');
+        const cutV = findSeamlessCutLine(imgData, w, h, 'V');
+
+        if (depth === 0) {
+            if (cutH) {
+                const topCanvas = document.createElement('canvas');
+                topCanvas.width = w; topCanvas.height = cutH.pos;
+                topCanvas.getContext('2d').drawImage(canvas, 0, 0, w, cutH.pos, 0, 0, w, cutH.pos);
+
+                const botCanvas = document.createElement('canvas');
+                botCanvas.width = w; botCanvas.height = h - cutH.pos;
+                botCanvas.getContext('2d').drawImage(canvas, 0, cutH.pos, w, h - cutH.pos, 0, 0, w, h - cutH.pos);
+
+                return [
+                    ...splitCanvasRecursively(topCanvas, 1, false),
+                    ...splitCanvasRecursively(botCanvas, 1, false)
+                ];
+            }
+        } else if (depth === 1) {
+            // Cắt đúng 1 đường dọc ở giữa để ra 2 mảnh và dừng lại
+            const midV = cutV ? cutV.pos : Math.floor(w / 2);
+            const leftCanvas = document.createElement('canvas');
+            leftCanvas.width = midV; leftCanvas.height = h;
+            leftCanvas.getContext('2d').drawImage(canvas, 0, 0, midV, h, 0, 0, midV, h);
+
+            const rightCanvas = document.createElement('canvas');
+            rightCanvas.width = w - midV; rightCanvas.height = h;
+            rightCanvas.getContext('2d').drawImage(canvas, midV, 0, w - midV, h, 0, 0, w - midV, h);
+
+            return [leftCanvas, rightCanvas];
         }
     }
 
-    // Không còn đường rãnh nào có thể tách -> giữ nguyên mảnh ảnh này
+    // Không phải ảnh ghép cần tách -> Trả về nguyên canvas gốc
     return [canvas];
 }
 
@@ -1296,20 +1349,23 @@ async function processAndSplitCollage(file) {
             canvas.height = h;
             ctx.drawImage(img, 0, 0);
 
-            // Nếu ảnh quá nhỏ thì không cần phân tích
+            // Ảnh nhỏ dưới 250px giữ nguyên ảnh gốc
             if (w < 250 || h < 250) {
-                canvasToBlob(canvas).then(blob => resolve([blob]));
+                resolve([file]);
                 return;
             }
 
             const resultCanvases = splitCanvasRecursively(canvas, 0);
+
+            // NẾU TÁCH THÀNH CÔNG THÀNH NHIỀU ẢNH
             if (resultCanvases && resultCanvases.length > 1) {
-                Promise.all(resultCanvases.map(canvasToBlob)).then(blobs => {
+                Promise.all(resultCanvases.map(c => canvasToBlob(c))).then(blobs => {
                     const validBlobs = blobs.filter(Boolean);
-                    resolve(validBlobs.length > 0 ? validBlobs : [file]);
+                    resolve(validBlobs.length > 1 ? validBlobs : [file]);
                 });
             } else {
-                canvasToBlob(canvas).then(blob => resolve([blob || file]));
+                // KHÔNG PHẢI ĐỐI TƯỢNG CẦN TÁCH -> TẢI NGUYÊN FILE GỐC
+                resolve([file]);
             }
         };
         img.onerror = () => resolve([file]);
@@ -1321,36 +1377,42 @@ function canvasToBlob(canvas) {
     return new Promise(resolve => {
         canvas.toBlob(blob => {
             resolve(blob || null);
-        }, 'image/webp', 0.88);
+        }, 'image/jpeg', 0.92);
     });
 }
 
+// 4. Quá trình tải lên an toàn (Bao gồm Album ID và chống nghẽn Rate Limit)
 async function handleSelectedFiles(fileList) {
     const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
     if (files.length === 0) return;
 
     uploadProgressContainer.style.display = 'block';
     uploadProgressBar.style.width = '5%';
-    uploadProgressText.innerText = 'Đang phân tích và cắt ảnh ghép...';
+    uploadProgressText.innerText = 'Đang phân tích định dạng ảnh...';
 
-    const finalBlobs = [];
+    const finalUploadItems = [];
     for (let i = 0; i < files.length; i++) {
-        const blobs = await processAndSplitCollage(files[i]);
-        finalBlobs.push(...blobs);
+        const items = await processAndSplitCollage(files[i]);
+        finalUploadItems.push(...items);
     }
 
-    const total = finalBlobs.length;
+    const total = finalUploadItems.length;
     let completed = 0;
     let failed = 0;
 
     for (let i = 0; i < total; i++) {
-        const blob = finalBlobs[i];
-        if (!blob) continue;
+        const item = finalUploadItems[i];
+        if (!item) continue;
+
+        // Giãn cách 800ms giữa các ảnh để ImgBB không chặn API
+        if (i > 0) {
+            await new Promise(r => setTimeout(r, 800));
+        }
 
         const formData = new FormData();
         formData.append('key', '428c31582c15eb58b9bf14e4c7f3a4ea');
         formData.append('album_id', IBB_ALBUM_ID);
-        formData.append('image', blob, `love_${Date.now()}_${i}.webp`);
+        formData.append('image', item, `love_${Date.now()}_${i}.jpg`);
 
         await new Promise((resolveUpload) => {
             const xhr = new XMLHttpRequest();
@@ -1383,7 +1445,7 @@ async function handleSelectedFiles(fileList) {
                             return;
                         }
                     } catch (err) {
-                        console.error("Lỗi parse phản hồi ImgBB:", err);
+                        console.error("Lỗi phân tích phản hồi ImgBB:", err);
                     }
                 }
                 console.error("Lỗi upload ImgBB:", xhr.status, xhr.responseText);
@@ -1392,7 +1454,6 @@ async function handleSelectedFiles(fileList) {
             };
 
             xhr.onerror = () => {
-                console.error("Lỗi kết nối khi tải ảnh lên ImgBB");
                 failed++;
                 resolveUpload();
             };
@@ -1403,10 +1464,10 @@ async function handleSelectedFiles(fileList) {
 
     if (failed > 0) {
         uploadProgressBar.style.background = '#e03131';
-        uploadProgressText.innerText = `Có ${failed}/${total} ảnh tải lên thất bại (kiểm tra kết nối ImgBB).`;
+        uploadProgressText.innerText = `Hoàn tất với ${completed}/${total} ảnh. Có ${failed} ảnh bị lỗi tải lên.`;
     } else {
         uploadProgressBar.style.width = '100%';
-        uploadProgressText.innerText = `Hoàn tất! Đã thêm ${completed} ảnh vào Album.`;
+        uploadProgressText.innerText = `Hoàn tất! Đã thêm đủ ${completed} ảnh vào Album.`;
     }
     await loadIbbAlbumPhotos();
     setTimeout(() => {
