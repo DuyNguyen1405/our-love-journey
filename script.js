@@ -39,6 +39,8 @@ let lastLoginTime = 0; // Mốc đăng nhập lần trước để so sánh thô
 let newOrUpdatedEvents = [];
 
 let swiperInstance = null;
+let savedPhotoIndexBeforeLock = null;
+let savedNextPhotoUrl = null;
 let editingKey = null;
 let currentUser = ''; 
 
@@ -867,6 +869,8 @@ if (uploadDropzone && photoFileInput) {
 }
 
 window.pickRandomAlbumPhoto = function(event) {
+    savedNextPhotoUrl = null;
+    savedPhotoIndexBeforeLock = null;
     if (event) event.stopPropagation();
     if (!currentAlbumList || currentAlbumList.length === 0) {
         alert('Chưa có ảnh nào trong thư viện!');
@@ -987,6 +991,16 @@ window.toggleLockAlbumPhoto = async function(index, event) {
     const isCurrentlyLocked = Boolean(item.isLocked);
     const urlKey = getUrlKey(item.url);
 
+    // Lưu lại vị trí và ảnh tiếp theo trước khi chuyển ảnh khóa lên đầu
+    if (!isCurrentlyLocked && currentAlbumList.length > 1) {
+        savedPhotoIndexBeforeLock = index;
+        const nextIdx = (index + 1) % currentAlbumList.length;
+        savedNextPhotoUrl = currentAlbumList[nextIdx] ? currentAlbumList[nextIdx].url : null;
+    } else {
+        savedPhotoIndexBeforeLock = null;
+        savedNextPhotoUrl = null;
+    }
+
     try {
         if (isCurrentlyLocked) {
             await remove(ref(db, `loveAlbumLocked_BiMat123/${urlKey}`));
@@ -1019,6 +1033,8 @@ window.toggleLockAlbumPhoto = async function(index, event) {
 };
 
 window.deleteAlbumPhoto = async function(index, event) {
+    savedNextPhotoUrl = null;
+    savedPhotoIndexBeforeLock = null;
     if (event) event.stopPropagation();
     const item = currentAlbumList[index];
     if (!item) return;
@@ -1090,7 +1106,29 @@ window.previewAlbumPhoto = function(index) {
         initialSlide: index,
         navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
         pagination: { el: ".swiper-pagination", clickable: true },
-        loop: currentAlbumList.length > 1
+        loop: currentAlbumList.length > 1,
+        on: {
+            slideNextTransitionStart: function() {
+                if (savedNextPhotoUrl) {
+                    const targetIdx = currentAlbumList.findIndex(p => p.url === savedNextPhotoUrl);
+                    savedNextPhotoUrl = null;
+                    savedPhotoIndexBeforeLock = null;
+                    if (targetIdx !== -1 && targetIdx !== this.realIndex) {
+                        setTimeout(() => {
+                            if (this.params && this.params.loop) {
+                                this.slideToLoop(targetIdx);
+                            } else {
+                                this.slideTo(targetIdx);
+                            }
+                        }, 0);
+                    }
+                }
+            },
+            slidePrevTransitionStart: function() {
+                savedNextPhotoUrl = null;
+                savedPhotoIndexBeforeLock = null;
+            }
+        }
     });
 };
 
@@ -1702,10 +1740,46 @@ window.openSlider = function(eventIndex, initialSlideIndex = 0) {
     });
 }
 
-closeSliderBtn.addEventListener('click', () => sliderModal.classList.remove('active'));
-sliderModal.addEventListener('click', (e) => {
-    if (e.target === sliderModal) sliderModal.classList.remove('active');
+closeSliderBtn.addEventListener('click', () => {
+    savedNextPhotoUrl = null;
+    savedPhotoIndexBeforeLock = null;
+    sliderModal.classList.remove('active');
 });
+sliderModal.addEventListener('click', (e) => {
+    if (e.target === sliderModal) {
+        savedNextPhotoUrl = null;
+        savedPhotoIndexBeforeLock = null;
+        sliderModal.classList.remove('active');
+    }
+});
+
+const swiperNextBtn = document.querySelector('.swiper-button-next');
+if (swiperNextBtn) {
+    swiperNextBtn.addEventListener('click', (e) => {
+        if (savedNextPhotoUrl && swiperInstance && currentAlbumList && currentAlbumList.length > 0) {
+            const targetIdx = currentAlbumList.findIndex(p => p.url === savedNextPhotoUrl);
+            savedNextPhotoUrl = null;
+            savedPhotoIndexBeforeLock = null;
+            if (targetIdx !== -1) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (swiperInstance.params && swiperInstance.params.loop) {
+                    swiperInstance.slideToLoop(targetIdx);
+                } else {
+                    swiperInstance.slideTo(targetIdx);
+                }
+            }
+        }
+    }, true);
+}
+
+const swiperPrevBtn = document.querySelector('.swiper-button-prev');
+if (swiperPrevBtn) {
+    swiperPrevBtn.addEventListener('click', () => {
+        savedNextPhotoUrl = null;
+        savedPhotoIndexBeforeLock = null;
+    }, true);
+}
 
 const scrollToTopBtn = document.getElementById('scrollToTopBtn');
 if (scrollToTopBtn) {
